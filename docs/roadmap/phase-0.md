@@ -15,7 +15,7 @@
 | 3 | Flutter app target with Material 3 + `DynamicColorBuilder` + `AppTokens` wired into root `ThemeData` | `flutter_app/lib/main.dart`, `flutter_app/pubspec.yaml` |
 | 4 | Runtime library compiles | `packages/runtime/lib/{spacing,breakpoints,app_tokens,app_button,app_switch,app_scaffold}.dart` |
 | 5 | CI scaffolding: TS typecheck/test/build + Dart analyze/test + Flutter Web WASM build | `.github/workflows/ci.yml` |
-| 6 | Six agent research reports + `00-synthesis.md` archived | `research/` |
+| 6 | Six agent research reports + `00-synthesis.md` archived | `docs/research/` |
 | 7 | One canonical fixture seeded | `packages/tsx-fixtures/fixtures/Button.tsx` |
 
 ## Toolchain pins
