@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(dir \"C:\\\\Developer\\\\Projects\\\\tsxtoflutter\")",
-      "WebSearch"
+      "WebSearch",
+      "Bash(pnpm --version)",
+      "Bash(dart --version)",
+      "Bash(flutter --version)",
+      "PowerShell(pnpm *)",
+      "PowerShell(corepack *)",
+      "PowerShell(mise *)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }
