@@ -95,11 +95,11 @@ jq '{components: [.components[] | {id, name, params, body: {kind: .body.kind, ta
 The Dart side decodes the IR (closed widget catalog: unknown tags throw at decode time) and emits a hand-editable shell + a regenerated `*.g.dart` joined by `part`/`part of`. `dart_style` formats both.
 
 ```bash
-cd packages/codegen && dart test 2>&1 | grep -E "All tests passed"
+cd packages/codegen && dart test 2>&1 | grep -oE "All tests passed!"
 ```
 
 ```output
-00:00 +10: All tests passed!
+All tests passed!
 ```
 
 ## 4. End-to-end conversion
@@ -111,7 +111,7 @@ rm -rf flutter_app/lib/components/cta.dart flutter_app/lib/components/cta.g.dart
 ```
 
 ```output
-Generated 1 widget(s).
+Generated 1 widget(s); 2 file(s) written.
 cta.dart
 cta.g.dart
 ```
@@ -186,10 +186,6 @@ cd flutter_app && flutter test 2>&1 | grep -E "All tests passed"
 
 ## 6. Reproducing this demo
 
-To re-execute every code block and confirm Phase 1 still holds:
+To re-execute every code block and confirm Phase 1 still holds, run `showboat verify docs/demos/phase-1.md` from the repo root.
 
-```sh
-showboat verify docs/demos/phase-1.md
-```
-
-Exit 0 means every output above is byte-identical on rerun. (The block above is intentionally not executed — `showboat verify` would recurse.)
+Exit 0 means every output above is byte-identical on rerun. The reproduction command is shown inline (not as a fenced code block) so `showboat verify` doesn't try to execute it and recurse into itself.
