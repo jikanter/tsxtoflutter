@@ -184,16 +184,12 @@ cd flutter_app && flutter test 2>&1 | grep -E "All tests passed"
 00:00 +1: All tests passed!
 ```
 
-## 6. Verify the demo
+## 6. Reproducing this demo
 
-Re-running every code block above and diffing the output against what's recorded:
+To re-execute every code block and confirm Phase 1 still holds:
 
-All eight blocks above re-execute and match. Phase 1 is locked.
-
-```bash
-showboat verify docs/demos/phase-1.md > /dev/null 2>&1 && echo 'all blocks match'
+```sh
+showboat verify docs/demos/phase-1.md
 ```
 
-```output
-all blocks match
-```
+Exit 0 means every output above is byte-identical on rerun. (The block above is intentionally not executed — `showboat verify` would recurse.)

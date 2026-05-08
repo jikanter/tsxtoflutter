@@ -67,10 +67,18 @@
       "Bash(git rm *)",
       "Bash(git commit -m ' *)",
       "Bash(pnpm --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/ingest --filter @tsxtoflutter/tokens --filter @tsxtoflutter/cache --filter @tsxtoflutter/cli test)",
-      "Bash(echo \"demo verify=$?\")"
+      "Bash(echo \"demo verify=$?\")",
+      "Bash(wait %1)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Bash(jobs -l)",
+      "Bash(pkill -9 -f \"showboat verify\")",
+      "Bash(pkill -9 -f \"all blocks match\")",
+      "Bash(timeout 240 showboat verify docs/demos/phase-1.md > /tmp/sb2.out 2>&1; echo \"exit=$?\"; tail -20 /tmp/sb2.out)"
     ],
     "additionalDirectories": [
-      "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
+      "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest",
+      "/tmp"
     ]
   }
 }
