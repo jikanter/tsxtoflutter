@@ -1,5 +1,7 @@
 # Phase 4 — Platform polish
 
+
+**Status:** ✅ Done with some deferrals. Recorded here so later phases have a known-good starting state.
 **Window:** weeks 10–12.
 
 **Goal:** Day-1 platform musts on iOS and Android, with a CI matrix that exercises all three Flutter targets (Web, iOS simulator, Android emulator) on every PR. The Button fixture (and the broader 50-fixture corpus from Phase 3) must render with platform-appropriate chrome on each.

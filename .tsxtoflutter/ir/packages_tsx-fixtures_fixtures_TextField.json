@@ -1,0 +1,136 @@
+{
+  "version": "0.1",
+  "inputHash": "de2a24156611dce9d83619363de13f4d1e725da4db02a6432b266a3bebed0dce",
+  "rulesetVersion": "0.1.0",
+  "components": [
+    {
+      "kind": "component",
+      "id": "7532e929434915d00eecfc1b50befe46f68d81060330058d1eae2d5566933166",
+      "name": "TextField",
+      "source": {
+        "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+        "line": 9,
+        "col": 7
+      },
+      "params": [
+        {
+          "name": "label",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "onChange",
+          "type": {
+            "kind": "callback"
+          }
+        }
+      ],
+      "body": {
+        "kind": "element",
+        "tag": "unknown",
+        "source": {
+          "name": "label",
+          "loc": {
+            "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+            "line": 11,
+            "col": 4
+          }
+        },
+        "style": {
+          "layout": {
+            "gap": {
+              "kind": "px",
+              "value": 4
+            }
+          }
+        },
+        "props": {},
+        "events": [],
+        "children": [
+          {
+            "kind": "element",
+            "tag": "text-inline",
+            "source": {
+              "name": "span",
+              "loc": {
+                "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+                "line": 12,
+                "col": 6
+              }
+            },
+            "style": {
+              "color": {
+                "fg": {
+                  "kind": "token",
+                  "path": "color.sm"
+                }
+              }
+            },
+            "props": {},
+            "events": [],
+            "children": [
+              {
+                "kind": "expression",
+                "expr": {
+                  "kind": "paramRef",
+                  "name": "label"
+                },
+                "loc": {
+                  "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+                  "line": 12,
+                  "col": 44
+                }
+              }
+            ]
+          },
+          {
+            "kind": "element",
+            "tag": "unknown",
+            "source": {
+              "name": "Input",
+              "loc": {
+                "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+                "line": 13,
+                "col": 6
+              }
+            },
+            "style": {},
+            "props": {
+              "type": {
+                "kind": "literal",
+                "value": "text"
+              },
+              "value": {
+                "kind": "paramRef",
+                "name": "value"
+              }
+            },
+            "events": [
+              {
+                "name": "change",
+                "handler": {
+                  "kind": "expression",
+                  "raw": "e=>onChange(e.target.value)",
+                  "loc": {
+                    "file": "packages/tsx-fixtures/fixtures/TextField.tsx",
+                    "line": 16,
+                    "col": 18
+                  }
+                }
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": []
+}

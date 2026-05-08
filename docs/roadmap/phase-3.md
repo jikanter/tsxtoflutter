@@ -1,5 +1,7 @@
 # Phase 3 — Token system + LLM fallback
 
+**Status:** ✅ Done. Recorded here so later phases have a known-good starting state.
+
 **Window:** weeks 7–9.
 
 **Goal:** (a) one DTCG source produces both Tailwind config and Dart theme; (b) the deterministic codemod has a Sonnet-4.6 escape hatch for IR subtrees it can't lower; (c) a 50-fixture golden corpus gates merges via `tsxf eval`.

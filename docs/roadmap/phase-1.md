@@ -1,5 +1,7 @@
 # Phase 1 — Happy-path round-trip
 
+**Status:** ✅ Done. Recorded here so later phases have a known-good starting state.
+
 **Window:** weeks 2–4.
 
 **Goal:** one fixture (`Button.tsx`) travels TSX → IR → Dart → rendered Flutter Web widget end-to-end, with no manual intervention. Coverage is deliberately narrow — a working pipeline beats broad-but-broken support.

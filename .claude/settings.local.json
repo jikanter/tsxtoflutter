@@ -96,7 +96,11 @@
       "Bash(jobs -l)",
       "Bash(pkill -9 -f \"showboat verify\")",
       "Bash(pkill -9 -f \"all blocks match\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(rm -rf /tmp/tsxf-e2e-trial)",
+      "Bash(mkdir -p /tmp/tsxf-e2e-trial)",
+      "Bash(rm -rf /tmp/tsxf-e2e-pageheader)",
+      "Bash(mkdir -p /tmp/tsxf-e2e-pageheader)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest",
