@@ -49,7 +49,12 @@
       "Bash(pnpm --filter @tsxtoflutter/preview build)",
       "Bash(pnpm --filter @tsxtoflutter/cache --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/cli --filter @tsxtoflutter/tokens --filter @tsxtoflutter/ingest test)",
       "Bash(flutter test *)",
-      "Bash(showboat --help)"
+      "Bash(showboat --help)",
+      "Bash(showboat init *)",
+      "Bash(showboat note *)",
+      "Bash(showboat exec *)",
+      "Bash(showboat pop *)",
+      "Bash(showboat verify *)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
