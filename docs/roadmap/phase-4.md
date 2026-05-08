@@ -71,7 +71,7 @@
 
 ### R8 — `aria-*` → `Semantics`
 
-- [ ] Mapping table from `research/03-android-platform.md` and `04-ios-platform.md` implemented in `packages/codegen/lib/src/mapping/semantics.dart`.
+- [ ] Mapping table from `docs/research/03-android-platform.md` and `04-ios-platform.md` implemented in `packages/codegen/lib/src/mapping/semantics.dart`.
 - [ ] Coverage: `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-hidden`, `aria-pressed`, `aria-expanded`, `aria-disabled`, `role="button"`, `role="heading"`, `role="link"`.
 
 ### R9 — CI matrix (`.github/workflows/ci.yml`)

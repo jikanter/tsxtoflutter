@@ -37,22 +37,21 @@
 - [x] Each tool round calls `BudgetTracker.recordToolTurn()`; budget overrun fail-closes the loop before the next turn fires.
 - [x] Tool errors reach the model as `tool_result` blocks with `is_error: true` — the loop never crashes on a thrown tool handler.
 
-### R4 — Golden corpus + automated quality gate
+### R4 — Golden corpus + automated quality gate 🟡
 
-- [ ] Grow `packages/tsx-fixtures/fixtures/` to **50 components** spanning: buttons (4 variants), cards, inputs (text/select/checkbox/radio/switch), dialogs, sheets, lists, navigation rail, tabs, simple data display, simple forms, layout primitives.
-- [ ] `tsxf eval --corpus packages/tsx-fixtures` — runs the full pipeline against the corpus and applies these gates per component:
-  - `dart analyze` exit 0
-  - `dart format --set-exit-if-changed` exit 0
-  - Flutter widget golden tests (per-component PNG goldens under `flutter_app/test/golden/`)
-  - Semantic diff: `@ast-grep/napi` pattern match against expected Dart structure (catches "compiles but wrong widget tree" regressions)
-- [ ] Non-zero exit on regression. CI runs `tsxf eval` on every PR; merges blocked when any gate fails.
-- [ ] Quality scorecard published to `eval-results.json` artifact with per-fixture pass/fail and budget consumption.
+- [~] **Corpus**: 14 fixtures landed (Button, PrimaryButton, SecondaryButton, GhostButton, IconButton, InfoCard, StatBadge, TextField, CheckboxRow, SwitchRow, ListRow, Divider, Avatar, PageHeader). Spec target is 50; the eval framework is corpus-size agnostic so growing the corpus is a follow-on PR.
+- [x] `tsxf eval --corpus <dir> --out <file> --trace-dir <dir>` walks the corpus, runs ingest, captures per-fixture pass/fail, and writes `eval-results.json` plus per-conversion ndjson traces.
+- [x] `dart analyze` and `dart format --set-exit-if-changed --output=none` gates run when `dart` is on PATH and a generated `*.dart` exists for the fixture under `flutter_app/lib/components/`. Both gates report `skipped` (with a reason) rather than blocking when prerequisites are absent.
+- [ ] Flutter widget golden tests (per-component PNG goldens under `flutter_app/test/golden/`) — Phase 4.
+- [ ] Semantic diff via `@ast-grep/napi` against expected Dart structure — Phase 4.
+- [x] Non-zero exit on regression: `runEval` returns 1 if any fixture fails a mandatory gate.
+- [x] Per-fixture scorecard in `eval-results.json` with `{components: [{id, name, complexity}], ingest, dartAnalyze?, dartFormat?, conversionId, passed}` and rolled-up totals (`{passed, failed, durationMs, dartAvailable}`). Budget consumption rolls in once the LLM path is invoked end-to-end.
 
-### R5 — Tracing scaffold
+### R5 — Tracing scaffold ✅
 
-- [ ] Conversion-id assigned at ingest start; threaded through all subprocess calls and LLM calls.
-- [ ] OTel spans for `ingest`, `translate`, `llm.request`, `tool.run_flutter_analyze`, `codegen`, `cache.{hit,miss}`. Exporter pluggable; default = stdout JSON in Phase 3 (Langfuse wired in Phase 5).
-- [ ] `tsxf trace open <conversion-id>` — Phase 3 prints the local span dump; opens Langfuse only once Phase 5 ships.
+- [x] `newConversionId()` returns a 24-hex-char id at the start of every `tsxf eval` fixture run; threaded into every span.
+- [x] OTel-shaped span names centralised in `SpanNames` (`ingest`, `translate`, `llm.request`, `tool.{run_flutter_analyze,render_widget_screenshot,get_design_token,lookup_widget_catalog}`, `codegen`, `cache.{hit,miss}`). Exporter is the seam: `StdoutJsonExporter` (one ndjson line per span), `MemoryExporter` (tests), `FileNdjsonExporter` (per-conversion `<id>.ndjson` files for `tsxf trace open`). Langfuse exporter slots in here in Phase 5 without any callsite changes.
+- [x] `tsxf trace open <conversion-id> --trace-dir <dir>` reads the ndjson, sorts by start time, and prints a span dump with attributes + events. Returns exit 1 with a clear stderr message when the conversion id is unknown.
 
 ## File map
 
