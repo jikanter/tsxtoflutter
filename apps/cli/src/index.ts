@@ -4,6 +4,8 @@ import { Command } from 'commander';
 import { convert } from './commands/convert.js';
 import { runDoctor } from './commands/doctor.js';
 import { runCache } from './commands/cache.js';
+import { runEval } from './commands/eval.js';
+import { runTraceOpen } from './commands/trace.js';
 import { startWatch } from './commands/watch.js';
 
 const program = new Command();
@@ -89,10 +91,36 @@ program
 program
   .command('eval')
   .description('Run the golden-corpus quality eval.')
-  .option('--corpus <dir>', 'fixture directory')
-  .action((_opts) => {
-    console.log('TODO: tsxf eval');
-  });
+  .option('--corpus <dir>', 'fixture directory', 'packages/tsx-fixtures/fixtures')
+  .option('--out <file>', 'where to write the JSON scorecard', 'eval-results.json')
+  .option('--trace-dir <dir>', 'directory for per-conversion ndjson traces', '.tsxf-cache/traces')
+  .action(
+    async (opts: { corpus: string; out: string; traceDir: string }) => {
+      const code = await runEval({
+        corpusDir: path.resolve(opts.corpus),
+        outFile: path.resolve(opts.out),
+        traceDir: path.resolve(opts.traceDir),
+      });
+      process.exit(code);
+    },
+  );
+
+program
+  .command('trace')
+  .description('Inspect a recorded conversion trace.')
+  .argument('<sub>', 'open')
+  .argument('<conversionId>', 'conversion id')
+  .option('--trace-dir <dir>', 'directory holding ndjson traces', '.tsxf-cache/traces')
+  .action(
+    async (sub: string, conversionId: string, opts: { traceDir: string }) => {
+      if (sub !== 'open') {
+        process.stderr.write(`Unknown trace subcommand: ${sub}\n`);
+        process.exit(2);
+      }
+      const code = await runTraceOpen(conversionId, { traceDir: path.resolve(opts.traceDir) });
+      process.exit(code);
+    },
+  );
 
 program
   .command('doctor')

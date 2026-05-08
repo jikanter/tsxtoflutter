@@ -6,5 +6,5 @@
     "composite": true
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "../ir" }, { "path": "../llm" }]
+  "references": [{ "path": "../ir" }]
 }

@@ -5,6 +5,5 @@
     "outDir": "dist",
     "composite": true
   },
-  "include": ["src/**/*"],
-  "references": [{ "path": "../ir" }, { "path": "../llm" }]
+  "include": ["src/**/*"]
 }

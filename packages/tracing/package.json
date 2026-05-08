@@ -1,0 +1,22 @@
+{
+  "name": "@tsxtoflutter/tracing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OTel-shaped tracing primitives for the conversion pipeline. Stdout JSON exporter in Phase 3; Langfuse exporter lands in Phase 5.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

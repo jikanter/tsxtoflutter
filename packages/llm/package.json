@@ -1,0 +1,25 @@
+{
+  "name": "@tsxtoflutter/llm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "LLM fallback for IR subtrees the deterministic codemod can't lower. Sonnet-first, cached system prompt, budget-bounded tool-use loop.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tsxtoflutter/ir": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
