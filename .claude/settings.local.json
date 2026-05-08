@@ -54,7 +54,11 @@
       "Bash(showboat note *)",
       "Bash(showboat exec *)",
       "Bash(showboat pop *)",
-      "Bash(showboat verify *)"
+      "Bash(showboat verify *)",
+      "Bash(awk '/^```/ {print NR\": \"$0}' docs/demos/phase-2.md)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"diff-exit: $?\")",
+      "Bash(awk '/^```bash/{getline cmd; print NR\": \"cmd}' docs/demos/phase-2.md)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
