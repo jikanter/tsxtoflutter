@@ -17,11 +17,11 @@
 
 ## iOS requirements
 
-### R1 — Adaptive widget library extension (`packages/runtime`)
+### R1 — Adaptive widget library extension (`packages/runtime`) ✅ _(landed early in the parallel epic)_
 
-- [ ] Add `AppNavBar`, `AppListTile`, `AppDialog` alongside existing `AppButton` / `AppSwitch` / `AppScaffold`.
-- [ ] Each wraps `.adaptive()` constructors and branches on `Theme.of(context).platform`. **No `Platform.isIOS ? ... : ...` ternaries in user-facing code or codegen output.**
-- [ ] Cupertino flavoring opt-in via MDX frontmatter `platform: "ios-native"`.
+- [x] `AppNavBar`, `AppListTile`, `AppDialog` alongside existing `AppButton` / `AppSwitch` / `AppScaffold`. Files: `lib/src/adaptive/{app_nav_bar,app_list_tile,app_dialog}.dart`. Eight `flutter_test` widget tests assert the Material-on-Android / Cupertino-on-iOS branching plus `AppDialog.show()` action-value plumbing.
+- [x] Each branches on `Theme.of(context).platform`. **No `Platform.isIOS ? ... : ...` ternaries in user-facing code.** `AppNavBar` implements `PreferredSizeWidget` so it slots into `AppScaffold.appBar`. `AppDialog.show<T>()` returns the chosen action's `value` for either platform.
+- [ ] Cupertino flavoring opt-in via MDX frontmatter `platform: "ios-native"` — _MDX frontmatter routing is still TODO; the runtime widgets exist and are ready to be selected by codegen._
 
 ### R2 — Codegen iOS-aware emission (`packages/codegen`)
 

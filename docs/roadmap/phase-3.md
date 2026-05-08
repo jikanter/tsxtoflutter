@@ -8,14 +8,14 @@
 
 ## Requirements
 
-### R1 — DTCG token pipeline (`packages/tokens`)
+### R1 — DTCG token pipeline (`packages/tokens`) ✅ _(landed early in the parallel epic)_
 
-- [ ] `src/dtcg.ts` — load DTCG v1 JSON (`application/design-tokens+json`), resolve aliases (`{color.brand.500}`).
-- [ ] Style Dictionary v4 wiring with two emitters:
-  - **Tailwind config** — `tailwind.config.ts` with `theme.extend.colors / spacing / fontSize / radius` populated from tokens.
-  - **Dart theme** — `flutter_app/lib/theme.g.dart` exporting `AppTokens` constants the runtime already consumes.
-- [ ] First-pass coverage: 12 colors (M3 roles: `primary`, `onPrimary`, `surface`, `surfaceContainer*`, `outline`, `outlineVariant`, …), the existing spacing scale (already in `packages/runtime`), 4 type tokens (`display`, `headline`, `body`, `label`).
-- [ ] Token changes flow through codegen: edit `tokens.json` → both Tailwind config and `theme.g.dart` regenerate; visible in both preview panes within the Phase 2 ≤ 2 s budget.
+- [x] `src/dtcg.ts` — `loadDtcg(filePath)` reads + parses DTCG v1 JSON; `resolveAliases` walks the tree and resolves `{a.b.c}` references with cycle detection (`DtcgCycleError` carries the cycle path).
+- [x] Two emitters:
+  - **Tailwind** — `emitTailwindTheme` produces `{ colors, spacing, borderRadius, fontFamily, fontSize }` keyed by dot-flattened paths (so nested `color.brand.500` lands as `'brand.500'`). Replaces the Style Dictionary indirection.
+  - **Dart theme** — `emitDartTheme` returns `{ filePath, contents }` with a `GeneratedTokens` final class: hex colors → `Color(0xAARRGGBB)` (with `#rgb`/`#rrggbb`/`#rrggbbaa` normalization); dimensions (`px`/`rem`) → typed `double` constants.
+- [ ] First-pass coverage: 12 colors (M3 roles), spacing scale, 4 type tokens — _the emitters are general; the canonical `tokens.json` for the project is still TODO and gets added alongside the LLM fallback work below._
+- [ ] Token changes flow through codegen → Tailwind + `theme.g.dart` regenerate within the Phase 2 budget — _wiring into the watcher pipeline is TODO; the emitters are unit-test green._
 
 ### R2 — LLM fallback (`packages/ingest` + new `packages/llm`)
 

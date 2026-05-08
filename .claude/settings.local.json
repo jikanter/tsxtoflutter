@@ -65,8 +65,17 @@
       "Bash(git checkout *)",
       "Bash(git add *)",
       "Bash(git rm *)",
-      "Bash(git commit -m ' *)",
+      "Bash(git mv *)",
+      "Bash(git commit *)",
       "Bash(pnpm --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/ingest --filter @tsxtoflutter/tokens --filter @tsxtoflutter/cache --filter @tsxtoflutter/cli test)",
+      "Bash(pnpm --filter @tsxtoflutter/orchestrator exec vitest run)",
+      "Bash(pnpm --filter @tsxtoflutter/orchestrator build)",
+      "Bash(pnpm --filter @tsxtoflutter/cache build)",
+      "Bash(pnpm --filter @tsxtoflutter/cache test)",
+      "Bash(pnpm --filter @tsxtoflutter/cache --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/cli --filter @tsxtoflutter/tokens --filter @tsxtoflutter/ingest test)",
+      "Bash(pnpm --filter @tsxtoflutter/preview typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/preview build)",
+      "Bash(timeout 3 bun apps/cli/src/index.ts watch packages/tsx-fixtures/fixtures --ir-out /tmp/tsxf-watch-smoke/ir --out /tmp/tsxf-watch-smoke/out --flutter-app /tmp/tsxf-watch-smoke/flutter --cache-dir /tmp/tsxf-watch-smoke/cache)",
       "Bash(echo \"demo verify=$?\")"
     ],
     "additionalDirectories": [
