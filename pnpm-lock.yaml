@@ -20,6 +20,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@tsxtoflutter/cache':
+        specifier: workspace:*
+        version: link:../../packages/cache
       '@tsxtoflutter/ingest':
         specifier: workspace:*
         version: link:../../packages/ingest
@@ -107,6 +110,15 @@ importers:
       vite:
         specifier: ^8.0.0
         version: 8.0.11(@types/node@22.19.18)(esbuild@0.25.12)(jiti@2.7.0)(yaml@2.8.4)
+
+  packages/cache:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.18)(lightningcss@1.32.0)
 
   packages/ingest:
     dependencies:

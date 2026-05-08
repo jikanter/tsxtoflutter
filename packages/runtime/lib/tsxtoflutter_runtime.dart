@@ -8,5 +8,8 @@ export 'src/breakpoints.dart';
 export 'src/spacing.dart';
 export 'src/tokens.dart';
 export 'src/adaptive/app_button.dart';
+export 'src/adaptive/app_dialog.dart';
+export 'src/adaptive/app_list_tile.dart';
+export 'src/adaptive/app_nav_bar.dart';
 export 'src/adaptive/app_scaffold.dart';
 export 'src/adaptive/app_switch.dart';

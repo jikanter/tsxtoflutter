@@ -1,6 +1,10 @@
+import path from 'node:path';
 import { Command } from 'commander';
 
 import { convert } from './commands/convert.js';
+import { runDoctor } from './commands/doctor.js';
+import { runCache } from './commands/cache.js';
+import { startWatch } from './commands/watch.js';
 
 const program = new Command();
 
@@ -34,10 +38,32 @@ program
 program
   .command('watch [dir]')
   .description('Watch inputs and hot-reload preview.')
-  .action((_dir?: string) => {
-    // TODO(phase 2): orchestrator.start()
-    console.log('TODO: tsxf watch');
-  });
+  .option('--ir-out <dir>', 'IR JSON output dir', '.tsxtoflutter/ir')
+  .option('--out <dir>', 'Generated Dart output dir', 'flutter_app/lib/components')
+  .option('--flutter-app <dir>', 'Flutter app dir', 'flutter_app')
+  .option('--cache-dir <dir>', 'Cache root', '.tsxf-cache')
+  .option('--vm-service-uri <uri>', 'Flutter VM-service URI for hot-reload')
+  .action(
+    async (
+      dir: string | undefined,
+      opts: {
+        irOut: string;
+        out: string;
+        flutterApp: string;
+        cacheDir: string;
+        vmServiceUri?: string;
+      },
+    ) => {
+      const code = await startWatch(dir ?? './inputs', {
+        irOutDir: opts.irOut,
+        outDir: opts.out,
+        flutterAppDir: opts.flutterApp,
+        cacheDir: opts.cacheDir,
+        ...(opts.vmServiceUri !== undefined ? { vmServiceUri: opts.vmServiceUri } : {}),
+      });
+      process.exit(code);
+    },
+  );
 
 program
   .command('preview')
@@ -50,8 +76,14 @@ program
   .command('cache')
   .description('Inspect or clear the parse/translate/build cache.')
   .argument('<sub>', 'stats | clear | gc')
-  .action((sub: string) => {
-    console.log(`TODO: tsxf cache ${sub}`);
+  .option('--cache-dir <dir>', 'cache root', '.tsxf-cache')
+  .option('--max-age-days <n>', 'gc threshold', '30')
+  .action(async (sub: string, opts: { cacheDir: string; maxAgeDays: string }) => {
+    const code = await runCache(sub, {
+      cacheDir: path.resolve(opts.cacheDir),
+      maxAgeDays: Number(opts.maxAgeDays),
+    });
+    process.exit(code);
   });
 
 program
@@ -65,8 +97,10 @@ program
 program
   .command('doctor')
   .description('Check that flutter, dart, bun, and required env vars are present.')
-  .action(() => {
-    console.log('TODO: tsxf doctor');
+  .option('--repo-root <dir>', 'project root used for flutter_app discovery', process.cwd())
+  .action(async (opts: { repoRoot: string }) => {
+    const code = await runDoctor(path.resolve(opts.repoRoot));
+    process.exit(code);
   });
 
 export function run(argv: string[]): void {

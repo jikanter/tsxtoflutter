@@ -1,53 +1,55 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { createDebouncer } from '../src/debounce.js';
 
-import { debounceTrailing } from '../src/debounce.js';
-
-describe('debounceTrailing', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  test('runs once on the trailing edge after the window expires', async () => {
-    const fn = vi.fn(async () => {});
-    const debounced = debounceTrailing(fn, 100);
-
-    debounced('a');
-    debounced('b');
-    debounced('c');
-    expect(fn).not.toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(100);
-    expect(fn).toHaveBeenCalledTimes(1);
-    expect(fn).toHaveBeenCalledWith('c');
+describe('createDebouncer', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  test('coalesces a burst into the most recent payload', async () => {
-    const fn = vi.fn(async () => {});
-    const debounced = debounceTrailing(fn, 100);
-
-    debounced(1);
-    await vi.advanceTimersByTimeAsync(50);
-    debounced(2);
-    await vi.advanceTimersByTimeAsync(50);
-    debounced(3);
-    await vi.advanceTimersByTimeAsync(99);
+  it('coalesces a burst of calls into one execution at the end of the window', async () => {
+    const fn = vi.fn();
+    const d = createDebouncer(fn, { windowMs: 100 });
+    d.notify('a');
+    d.notify('b');
+    d.notify('c');
     expect(fn).not.toHaveBeenCalled();
-
-    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTimeAsync(100);
     expect(fn).toHaveBeenCalledTimes(1);
-    expect(fn).toHaveBeenCalledWith(3);
+    expect(fn).toHaveBeenCalledWith(['a', 'b', 'c']);
   });
 
-  test('fires twice when calls are spaced beyond the window', async () => {
-    const fn = vi.fn(async () => {});
-    const debounced = debounceTrailing(fn, 100);
-
-    debounced('first');
-    await vi.advanceTimersByTimeAsync(100);
-    debounced('second');
-    await vi.advanceTimersByTimeAsync(100);
-
+  it('runs again after the window if more events arrive after settling', async () => {
+    const fn = vi.fn().mockResolvedValue(undefined);
+    const d = createDebouncer(fn, { windowMs: 50 });
+    d.notify('x');
+    await vi.advanceTimersByTimeAsync(50);
+    expect(fn).toHaveBeenCalledTimes(1);
+    d.notify('y');
+    await vi.advanceTimersByTimeAsync(50);
     expect(fn).toHaveBeenCalledTimes(2);
-    expect(fn).toHaveBeenNthCalledWith(1, 'first');
-    expect(fn).toHaveBeenNthCalledWith(2, 'second');
+    expect(fn).toHaveBeenLastCalledWith(['y']);
+  });
+
+  it('cancel() clears a pending burst', async () => {
+    const fn = vi.fn();
+    const d = createDebouncer(fn, { windowMs: 100 });
+    d.notify('a');
+    d.cancel();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates identical payloads in a single window', async () => {
+    const fn = vi.fn();
+    const d = createDebouncer(fn, { windowMs: 100, dedupe: true });
+    d.notify('same');
+    d.notify('same');
+    d.notify('other');
+    d.notify('same');
+    await vi.advanceTimersByTimeAsync(100);
+    expect(fn).toHaveBeenCalledWith(['same', 'other']);
   });
 });

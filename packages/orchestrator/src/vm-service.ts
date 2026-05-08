@@ -1,76 +1,124 @@
 /**
- * Tools for discovering and talking to the Flutter VM service that
- * `flutter run -d chrome` exposes.
+ * Flutter VM-service utilities.
  *
- * v0: scrape the URI from `flutter run` stdout, persist to disk so subsequent
- *     watcher launches don't have to relaunch Flutter to find it.
- * Later: `_reloadSources` POST + WebSocket lifecycle.
+ * `flutter run -d chrome` writes its VM-service URI to stdout; we parse it
+ * out and POST `_reloadSources` to trigger a hot restart on each codegen
+ * tick. If the WS handshake fails or the call times out, we fall back to
+ * file-only writes so the user can still re-run `r` manually.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
 
-const URI_RE = /Debug service listening on (ws:\/\/\S+)/g;
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
-/** Returns the most-recent VM-service URI in the given stdout, if any. */
-export function extractVmServiceUri(stdout: string): string | undefined {
-  let match: RegExpExecArray | null;
-  let last: string | undefined;
-  URI_RE.lastIndex = 0;
-  while ((match = URI_RE.exec(stdout)) !== null) {
-    last = match[1];
+const VM_SERVICE_LINE = /(https?|wss?):\/\/[^\s]+/;
+const VM_SERVICE_HINTS = [
+  /Dart VM Service.*available at:\s*(\S+)/i,
+  /Debug service listening on\s+(\S+)/i,
+  /Observatory listening on\s+(\S+)/i,
+];
+
+export function parseVmServiceUri(line: string): string | null {
+  for (const re of VM_SERVICE_HINTS) {
+    const m = line.match(re);
+    if (m) return m[1] ?? null;
   }
-  return last;
+  // Fall through: any line containing a bare URL with the trailing /=/.
+  const generic = line.match(VM_SERVICE_LINE);
+  if (generic && /\/=?\/?$/.test(generic[0])) return generic[0];
+  return null;
+}
+
+export function vmServiceWsUrl(uri: string): string {
+  if (uri.startsWith('ws://') || uri.startsWith('wss://')) return uri;
+  const replaced = uri.replace(/^http(s?):\/\//, 'ws$1://');
+  if (replaced.endsWith('/ws')) return replaced;
+  if (replaced.endsWith('/')) return `${replaced}ws`;
+  return `${replaced}/ws`;
 }
 
 export interface VmServiceCache {
   uri: string;
-  /** epoch ms when the URI was first discovered. */
-  discoveredAt: number;
+  recordedAt: string;
 }
 
-export async function loadVmServiceCache(
-  path: string,
-): Promise<VmServiceCache | undefined> {
+export async function readVmServiceCache(cachePath: string): Promise<VmServiceCache | null> {
   try {
-    const raw = await readFile(path, 'utf8');
+    const raw = await fs.readFile(cachePath, 'utf8');
     return JSON.parse(raw) as VmServiceCache;
-  } catch {
-    return undefined;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw e;
   }
 }
 
-export async function saveVmServiceCache(
-  path: string,
-  cache: VmServiceCache,
-): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, JSON.stringify(cache, null, 2));
+export async function writeVmServiceCache(cachePath: string, uri: string): Promise<void> {
+  await fs.mkdir(path.dirname(cachePath), { recursive: true });
+  const payload: VmServiceCache = { uri, recordedAt: new Date().toISOString() };
+  await fs.writeFile(cachePath, JSON.stringify(payload, null, 2), 'utf8');
+}
+
+export interface ReloadResult {
+  ok: boolean;
+  reason?: string;
 }
 
 /**
- * Hot-restart by POSTing to the VM service `_reloadSources` JSON-RPC.
- * Times out after 3 s — Skwasm reloads can hang and we'd rather fall back
- * to file-only writes than block the watcher.
+ * POST `_reloadSources` to the VM-service over WebSocket with a hard timeout.
+ *
+ * On Skwasm builds the WS handshake can hang; the timeout (default 3 s per
+ * Phase 2 risk register) ensures the watcher never blocks user edits.
  */
-export async function reloadSources(uri: string, timeoutMs = 3000): Promise<void> {
-  const httpUri = uri.replace(/^ws:\/\//, 'http://').replace(/\/ws$/, '');
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(httpUri, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: '_reloadSources',
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`VM service responded ${res.status}`);
-    }
-  } finally {
-    clearTimeout(t);
+export async function reloadSources(
+  vmServiceUri: string,
+  options: { timeoutMs?: number } = {},
+): Promise<ReloadResult> {
+  const timeoutMs = options.timeoutMs ?? 3000;
+  const wsUrl = vmServiceWsUrl(vmServiceUri);
+
+  let WSCtor: typeof WebSocket | null = null;
+  if (typeof WebSocket !== 'undefined') {
+    WSCtor = WebSocket;
+  } else {
+    return { ok: false, reason: 'WebSocket not available in runtime' };
   }
+
+  return new Promise<ReloadResult>((resolveResult) => {
+    let settled = false;
+    const finish = (r: ReloadResult) => {
+      if (settled) return;
+      settled = true;
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+      resolveResult(r);
+    };
+
+    const timer = setTimeout(() => finish({ ok: false, reason: 'timeout' }), timeoutMs);
+    const ws = new WSCtor!(wsUrl);
+    ws.addEventListener('open', () => {
+      const msg = JSON.stringify({
+        jsonrpc: '2.0',
+        method: '_reloadSources',
+        params: {},
+        id: 1,
+      });
+      try {
+        ws.send(msg);
+      } catch (err) {
+        clearTimeout(timer);
+        finish({ ok: false, reason: `send failed: ${(err as Error).message}` });
+      }
+    });
+    ws.addEventListener('message', () => {
+      clearTimeout(timer);
+      finish({ ok: true });
+    });
+    ws.addEventListener('error', (ev) => {
+      clearTimeout(timer);
+      const message = (ev as { message?: string }).message;
+      finish({ ok: false, reason: message ?? 'ws error' });
+    });
+  });
 }

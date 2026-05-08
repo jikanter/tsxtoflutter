@@ -2,53 +2,64 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
-import 'package:tsxtoflutter_codegen/src/watch/idempotent_writer.dart';
+import 'package:tsxtoflutter_codegen/src/emitter/idempotent_writer.dart';
 
 void main() {
-  group('IdempotentWriter', () {
-    late Directory dir;
-    setUp(() async {
-      dir = await Directory.systemTemp.createTemp('idem_writer_');
-    });
-    tearDown(() async {
-      await dir.delete(recursive: true);
-    });
+  late Directory tempIr;
+  late Directory tempOut;
 
-    test('writes a new file when missing', () async {
-      final writer = IdempotentWriter();
-      final target = p.join(dir.path, 'a.dart');
-      final result = await writer.write(target, 'class A {}\n');
-      expect(result, IdempotentWriteResult.created);
-      expect(await File(target).readAsString(), 'class A {}\n');
-    });
+  setUp(() async {
+    tempIr = await Directory.systemTemp.createTemp('codegen-watch-ir-');
+    tempOut = await Directory.systemTemp.createTemp('codegen-watch-out-');
+    final fixture = File(p.join('test', 'fixtures', 'cta.ir.json'));
+    await File(p.join(tempIr.path, 'cta.ir.json'))
+        .writeAsString(await fixture.readAsString());
+  });
 
-    test('skips writing when contents are byte-identical', () async {
-      final writer = IdempotentWriter();
-      final target = p.join(dir.path, 'a.dart');
-      await writer.write(target, 'class A {}\n');
-      final firstMtime = await File(target).lastModified();
-      // Sleep just enough that mtime would differ if a write happened.
-      await Future<void>.delayed(const Duration(milliseconds: 25));
-      final result = await writer.write(target, 'class A {}\n');
-      expect(result, IdempotentWriteResult.unchanged);
-      expect(await File(target).lastModified(), firstMtime);
-    });
+  tearDown(() async {
+    if (tempIr.existsSync()) await tempIr.delete(recursive: true);
+    if (tempOut.existsSync()) await tempOut.delete(recursive: true);
+  });
 
-    test('rewrites when contents differ', () async {
-      final writer = IdempotentWriter();
-      final target = p.join(dir.path, 'a.dart');
-      await writer.write(target, 'class A {}\n');
-      final result = await writer.write(target, 'class B {}\n');
-      expect(result, IdempotentWriteResult.updated);
-      expect(await File(target).readAsString(), 'class B {}\n');
-    });
+  test('emitAllInDir produces shell + generated pair on first run', () async {
+    final result = await emitAllInDir(irDir: tempIr.path, outDir: tempOut.path);
+    expect(result.components, 1);
+    expect(result.filesWritten, 2);
+    expect(File(p.join(tempOut.path, 'cta.dart')).existsSync(), isTrue);
+    expect(File(p.join(tempOut.path, 'cta.g.dart')).existsSync(), isTrue);
+  });
 
-    test('creates parent directories on demand', () async {
-      final writer = IdempotentWriter();
-      final target = p.join(dir.path, 'nested', 'deeper', 'a.dart');
-      final result = await writer.write(target, 'class A {}\n');
-      expect(result, IdempotentWriteResult.created);
-      expect(File(target).existsSync(), isTrue);
-    });
+  test('second run with identical IR writes no files (idempotent)', () async {
+    await emitAllInDir(irDir: tempIr.path, outDir: tempOut.path);
+    final genFile = File(p.join(tempOut.path, 'cta.g.dart'));
+    final mtimeBefore = await genFile.lastModified();
+
+    // Sleep enough to outrun fs mtime resolution.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    final second = await emitAllInDir(irDir: tempIr.path, outDir: tempOut.path);
+    expect(second.components, 1);
+    expect(second.filesWritten, 0);
+    final mtimeAfter = await genFile.lastModified();
+    expect(mtimeAfter, equals(mtimeBefore));
+  });
+
+  test('preserves a hand-edited shell file', () async {
+    await emitAllInDir(irDir: tempIr.path, outDir: tempOut.path);
+    final shell = File(p.join(tempOut.path, 'cta.dart'));
+    final hand = await shell.readAsString();
+    final modified = '$hand\n// hand edit\n';
+    await shell.writeAsString(modified);
+
+    final second = await emitAllInDir(irDir: tempIr.path, outDir: tempOut.path);
+    expect(second.filesWritten, 0);
+    expect(await shell.readAsString(), equals(modified));
+  });
+
+  test('writeIfChanged returns false when bytes match', () async {
+    final f = p.join(tempOut.path, 'sample.txt');
+    expect(await writeIfChanged(f, 'hello'), isTrue);
+    expect(await writeIfChanged(f, 'hello'), isFalse);
+    expect(await writeIfChanged(f, 'world'), isTrue);
   });
 }

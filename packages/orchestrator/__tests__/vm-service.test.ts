@@ -1,32 +1,29 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { parseVmServiceUri, vmServiceWsUrl } from '../src/vm-service.js';
 
-import { extractVmServiceUri } from '../src/vm-service.js';
-
-describe('extractVmServiceUri', () => {
-  test('finds the URI in a Flutter run banner', () => {
-    const stdout = [
-      'Launching lib/main.dart on Chrome in debug mode...',
-      'Waiting for connection from debug service on Chrome...',
-      'Debug service listening on ws://127.0.0.1:55432/aBc123XyZ=/ws',
-      'Flutter run key commands.',
-    ].join('\n');
-    expect(extractVmServiceUri(stdout)).toBe(
-      'ws://127.0.0.1:55432/aBc123XyZ=/ws',
-    );
+describe('parseVmServiceUri', () => {
+  it('extracts the URI from a standard `flutter run` stdout line', () => {
+    const line =
+      'A Dart VM Service on Chrome is available at: http://127.0.0.1:54321/abc123XYZ=/';
+    expect(parseVmServiceUri(line)).toBe('http://127.0.0.1:54321/abc123XYZ=/');
   });
 
-  test('returns undefined when the banner has not appeared yet', () => {
-    expect(extractVmServiceUri('Launching ...')).toBeUndefined();
+  it('extracts from `Debug service listening on ws://...` form', () => {
+    const line = 'Debug service listening on ws://127.0.0.1:5555/abc=/ws';
+    expect(parseVmServiceUri(line)).toBe('ws://127.0.0.1:5555/abc=/ws');
   });
 
-  test('matches the most recent URI when several are emitted', () => {
-    const stdout = [
-      'Debug service listening on ws://127.0.0.1:1111/old=/ws',
-      'Lost connection.',
-      'Debug service listening on ws://127.0.0.1:2222/new=/ws',
-    ].join('\n');
-    expect(extractVmServiceUri(stdout)).toBe(
-      'ws://127.0.0.1:2222/new=/ws',
-    );
+  it('returns null when no VM-service URI is present', () => {
+    expect(parseVmServiceUri('boring log line')).toBeNull();
+  });
+
+  it('vmServiceWsUrl converts http VM-service URI to ws://...ws', () => {
+    expect(vmServiceWsUrl('http://127.0.0.1:54321/abc=/'))
+      .toBe('ws://127.0.0.1:54321/abc=/ws');
+  });
+
+  it('vmServiceWsUrl leaves a ws:// URL unchanged', () => {
+    expect(vmServiceWsUrl('ws://127.0.0.1:5555/abc=/ws'))
+      .toBe('ws://127.0.0.1:5555/abc=/ws');
   });
 });

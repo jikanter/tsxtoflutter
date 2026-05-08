@@ -1,26 +1,55 @@
 /**
- * Trailing-edge debouncer. Calls within `windowMs` of one another are
- * coalesced into a single invocation that fires once the burst has settled,
- * with the *last* arguments passed.
+ * Trailing-edge debouncer that coalesces a burst of `notify(payload)` calls
+ * into a single `fn(payloads)` invocation at the end of the quiet window.
  *
- * No leading edge — chokidar bursts almost always represent the same logical
- * save, so the first event is rarely the one we care about.
+ * Used by the watcher (Phase 2 R1) to collapse editor save bursts (often
+ * 3–5 fs events for a single Cmd+S) into one ingest+codegen cycle.
  */
-export function debounceTrailing<TArgs extends unknown[]>(
-  fn: (...args: TArgs) => void | Promise<void>,
-  windowMs: number,
-): (...args: TArgs) => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastArgs: TArgs | null = null;
 
-  return (...args: TArgs) => {
-    lastArgs = args;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      const a = lastArgs;
-      lastArgs = null;
-      if (a) void fn(...a);
-    }, windowMs);
+export interface DebouncerOptions<T> {
+  windowMs: number;
+  /** When true, identical payloads (===) are deduped within a window. */
+  dedupe?: boolean;
+  /** Optional comparator for dedupe. Defaults to ===. */
+  equal?: (a: T, b: T) => boolean;
+}
+
+export interface Debouncer<T> {
+  notify(payload: T): void;
+  cancel(): void;
+}
+
+export function createDebouncer<T>(
+  fn: (payloads: T[]) => unknown,
+  options: DebouncerOptions<T>,
+): Debouncer<T> {
+  const { windowMs, dedupe = false, equal = (a, b) => a === b } = options;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let queue: T[] = [];
+
+  const fire = () => {
+    timer = null;
+    const payload = queue;
+    queue = [];
+    void fn(payload);
+  };
+
+  return {
+    notify(payload: T) {
+      if (dedupe && queue.some((existing) => equal(existing, payload))) {
+        // already pending, no-op
+      } else {
+        queue.push(payload);
+      }
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(fire, windowMs);
+    },
+    cancel() {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      queue = [];
+    },
   };
 }
