@@ -1,4 +1,4 @@
-import { collectStats, clearCache, gcCache, type CacheStats } from '../cache/store.js';
+import { collectStats, clearCache, gcCache, type CacheStats } from '@tsxtoflutter/cache';
 
 export interface CacheCommandOptions {
   cacheDir: string;

@@ -10,7 +10,7 @@ import {
   collectStats,
   clearCache,
   gcCache,
-} from '../src/cache/store.js';
+} from '../src/store.js';
 
 let dir: string;
 

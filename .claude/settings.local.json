@@ -39,7 +39,11 @@
       "Bash(pnpm --filter @tsxtoflutter/orchestrator exec vitest run)",
       "Bash(pnpm --filter @tsxtoflutter/orchestrator build)",
       "Bash(dart pub *)",
-      "Bash(dart test *)"
+      "Bash(dart test *)",
+      "Bash(dart analyze *)",
+      "Bash(git mv *)",
+      "Bash(pnpm --filter @tsxtoflutter/cache build)",
+      "Bash(pnpm --filter @tsxtoflutter/cache test)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
