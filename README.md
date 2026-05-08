@@ -9,7 +9,7 @@ Transform TSX + MDX emitted by Claude Design / Claude mockups skills into runnab
 - Output is idiomatic Flutter: Material 3 + Riverpod 3 + adaptive shim layer (`AppButton`, `AppSwitch`, `AppScaffold`) — no `Platform.isIOS ? ... : ...` ternaries in user code.
 - Hand-edit safe: every component emits a `foo.dart` (handwritten shell) + `foo.g.dart` (regenerated widget tree) pair via `part`/`part of`.
 
-For the architecture rationale and per-domain deep dives, read `research/00-synthesis.md` and the six agent reports beside it. For the phased plan, see `docs/ROADMAP.md`.
+For the architecture rationale and per-domain deep dives, read `docs/research/00-synthesis.md` and the six agent reports beside it. For the phased plan, see `docs/ROADMAP.md`.
 
 ## Layout
 
@@ -28,8 +28,11 @@ tsxtoflutter/
 │   ├── codegen/        # Dart CLI: IR JSON → Dart via code_builder + dart_style
 │   └── runtime/        # Flutter package: Spacing, AppTokens, adaptive widgets
 ├── flutter_app/        # Generated Flutter app target
-├── research/           # 6 agent reports + 00-synthesis.md
-└── docs/ROADMAP.md     # phased plan
+└── docs/
+    ├── ROADMAP.md      # phased plan
+    ├── research/       # 6 agent reports + 00-synthesis.md
+    ├── ideas/          # exploratory phase ideas (not committed roadmap)
+    └── demos/          # showboat phase demos
 ```
 
 ## Bring-up (first-time setup)
@@ -136,6 +139,6 @@ CI runs the same gates plus a Flutter Web WASM build (`flutter build web --wasm`
 
 ## Further reading
 
-- `research/00-synthesis.md` — unified architecture, decisions, and resolved seams.
-- `research/01-react-ingestion.md` … `06-backend-orchestration.md` — per-domain deep dives.
+- `docs/research/00-synthesis.md` — unified architecture, decisions, and resolved seams.
+- `docs/research/01-react-ingestion.md` … `06-backend-orchestration.md` — per-domain deep dives.
 - `docs/ROADMAP.md` — phased delivery plan with milestones.

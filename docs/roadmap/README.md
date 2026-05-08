@@ -1,6 +1,6 @@
 # Roadmap phase specs
 
-Per-phase requirement specs. The high-level plan and exit criteria live in `../ROADMAP.md`; architecture rationale lives in `../../research/00-synthesis.md`. These docs translate the roadmap milestones into concrete deliverables, file targets, performance targets, constraints, risks, and acceptance gates.
+Per-phase requirement specs. The high-level plan and exit criteria live in `../ROADMAP.md`; architecture rationale lives in `../research/00-synthesis.md`. These docs translate the roadmap milestones into concrete deliverables, file targets, performance targets, constraints, risks, and acceptance gates.
 
 | Phase | Spec | Status | Window |
 |------:|------|--------|--------|

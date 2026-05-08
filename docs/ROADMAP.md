@@ -1,6 +1,6 @@
 # Roadmap
 
-Phased delivery plan. Each phase has an exit criterion that must hold before moving to the next. Architecture rationale lives in `research/00-synthesis.md`; this doc tracks milestones.
+Phased delivery plan. Each phase has an exit criterion that must hold before moving to the next. Architecture rationale lives in `docs/research/00-synthesis.md`; this doc tracks milestones.
 
 ## Phase 0 — Bootstrap (week 1) — DONE
 
@@ -11,7 +11,7 @@ The skeleton is in place; nothing is wired yet. This is the snapshot you're look
 - [x] `flutter_app/` target with Material 3 + `DynamicColorBuilder` + `AppTokens` wired into root `ThemeData`.
 - [x] Runtime library compiles: `Spacing`, `Breakpoints`, `AppTokens`, `AppButton`, `AppSwitch`, `AppScaffold`.
 - [x] CI scaffolding (`.github/workflows/ci.yml`): TS typecheck/test/build + Dart analyze/test + Flutter Web WASM build.
-- [x] Six agent research reports + `00-synthesis.md` archived under `research/`.
+- [x] Six agent research reports + `00-synthesis.md` archived under `docs/research/`.
 - [x] One canonical fixture seeded (`packages/tsx-fixtures/fixtures/Button.tsx`).
 
 **Exit criterion:** ✅ `pnpm install` and `flutter pub get` succeed; `pnpm typecheck` is green; `flutter run -d chrome` from `flutter_app/` lights up the placeholder home screen.
@@ -125,30 +125,106 @@ Day-1 platform musts from the iOS and Android agents.
 
 **Exit criterion:** Button fixture renders correctly with platform-appropriate chrome on Flutter Web, iOS simulator, and Android emulator. CI passes the full matrix.
 
-## Phase 5 — Hosted v1 (weeks 13+)
+## Phase 5 — `pi` harness integration (weeks 13–15)
 
-Move from local CLI to single-tenant hosted service.
+Make the conversion pipeline drivable from the [`pi`](https://github.com/anthropics/pi) CLI agent so that the same toolchain serves both the local watch loop and a headless agent runner. `pi` becomes the substrate: it owns the LLM call, the session, the tool dispatch, and the provider abstraction (Anthropic / Google / OpenAI). `tsxf` shrinks to the deterministic core (ingest + codegen + cache + watcher) plus a pi extension that exposes those primitives as tools.
 
 ### Milestones
 
-1. Postgres 16 + Drizzle ORM; `Conversion` schema per the synthesis.
-2. `pg-boss` durable job queue (no Redis dependency yet).
-3. HTTP API: `POST /conversions`, `GET /conversions/:id`, `POST /conversions/:id/preview`.
-4. Cloudflare Pages preview URLs with TTL.
-5. OpenTelemetry GenAI semantic conventions wired; spans shipped to Langfuse.
-6. Per-org daily budget enforcement at the queue worker.
-7. CAS storage: filesystem → S3-compatible (R2/MinIO) for parse/translate/build tiers.
+1. **`packages/pi-extension` — tsxtoflutter as a pi extension.**
+   - `packages/pi-extension/manifest.json` — extension entrypoint per `pi install` conventions.
+   - Tools exposed (matches the Phase 3 self-correction loop, now hosted by pi instead of a bespoke runner):
+     - `tsxf_ingest(path) → IRJson` — TSX/MDX → IR JSON, no LLM.
+     - `tsxf_codegen(ir) → { dart, gDart }` — IR → `*.dart` + `*.g.dart`, no LLM.
+     - `tsxf_analyze(path) → AnalyzerReport` — `flutter analyze` over a generated component.
+     - `tsxf_screenshot(path, device) → png` — `flutter drive` golden capture for one device id.
+     - `tsxf_token(name) → TokenValue` — DTCG token resolver.
+     - `tsxf_widget_lookup(query) → WidgetCatalogEntry[]` — runtime catalog lookup.
+   - `pi install ./packages/pi-extension` registers the toolset; `pi list` confirms.
 
-**Exit criterion:** a stranger can submit a TSX file via the API and get back a hosted Flutter Web preview URL within 60 s, with full trace observability.
+2. **`packages/pi-skill/convert.md` — the conversion skill.**
+   - Skill prompt orchestrates the deterministic-first / LLM-fallback flow described in Phase 3, but driven by pi's tool loop instead of a hand-rolled `MAX_TURNS=8` runner.
+   - Loaded with `pi --skill ./packages/pi-skill` (or globally via `pi install`).
+   - Provider-agnostic: `pi --provider anthropic --model claude-sonnet-4-6` is the default; the skill works unchanged under `--provider google` for benchmarking.
+   - Prompt-cache breakpoints declared in the skill so the static rules + widget catalog + token map ride pi's caching layer.
 
-## Phase 6 — Multi-tenant SaaS (months 4+)
+3. **Orchestrator delegates the LLM hop to pi.**
+   - `packages/orchestrator/src/llm/pi-runner.ts` — replaces direct Anthropic SDK calls from Phase 3 with `pi --print --skill convert --mode json` invocations.
+   - One pi session per conversion (`--session-dir .tsxf-cache/sessions/<sha>/`); failed conversions are resumable with `pi --resume <id>` for human-in-the-loop debugging without re-running ingest/codegen.
+   - Session JSON exported to traces (`tsxf trace open` opens the pi session alongside the existing OTel span view).
 
-Defer until Phase 5 has been used in anger.
+4. **Headless CI mode.**
+   - `tsxf eval --runner=pi` runs the golden corpus through pi in `--print` mode; no terminal, no interactive UI.
+   - Provider matrix: same corpus, same skill, run under `anthropic` and `google` providers; per-provider quality + cost report emitted to `.tsxf-cache/eval/<run-id>.json`.
+   - `pi --no-session` for ephemeral runs in CI; sessions only persisted for local dev.
 
-- BullMQ + Redis for throughput / rate limiting / flow DAG.
-- Per-tenant API keys, quota enforcement, audit log.
-- Versioned ruleset releases with rollback chains (`parentConversionId`).
-- Visual regression UI (Playwright + custom diff dashboard).
+5. **`tsxf doctor` extended.**
+   - Verifies `pi` is on `$PATH`, the `tsxtoflutter` extension is installed, the `convert` skill resolves, and at least one provider has a usable key.
+   - Surfaces actionable install commands (`pi install ...`) when checks fail.
+
+**Exit criterion:** the Phase 3 LLM fallback path is reachable in two equivalent ways — the existing in-process Anthropic SDK runner (kept as a fallback) and `pi --skill convert`. Golden corpus passes both runners with ≥80% prompt-cache hit rate; provider-matrix eval produces a quality + cost comparison across at least two providers.
+
+## Phase 6 — Validation overlay across parallel platform features (weeks 16–20)
+
+Treat iOS, Android, and Web as three parallel feature sets layered over the same IR — each with its own platform-specific code paths, its own validators, and its own evidence trail. Phase 4 made each platform render; Phase 6 proves they stay in sync as the corpus grows. The unit of validation is a `(component, platform, layer)` triple. Layers stack; platforms run in parallel.
+
+### Parallel platform overlays
+
+For every component, three artifact sets are emitted from the same IR and held side-by-side:
+
+- **iOS overlay** — Cupertino-flavored adaptive substitutions (`CupertinoPageRoute`, `BouncingScrollPhysics`, haptics on actions, large-title nav).
+- **Android overlay** — Material 3 + dynamic color, predictive back, M3 motion specs.
+- **Web overlay** — Material 3 baseline, keyboard-first focus rings, reduced-motion media query honored.
+
+Each overlay is a separate column under `flutter_app/lib/components/<name>/{ios,android,web}.g.dart`, all sharing the same `<name>.dart` shell. Overlays are selected at runtime by the existing adaptive shim — Phase 6 is about validating each one in isolation, not changing the runtime selection.
+
+### Validation layers (each runs per-platform, in parallel)
+
+1. **Layer 1 — Static analysis.** `flutter analyze` per platform target; `dart format --set-exit-if-changed`; ast-grep semantic-pattern match against expected Dart per overlay.
+2. **Layer 2 — Widget unit tests.** `flutter test` with `debugDefaultTargetPlatformOverride = TargetPlatform.{iOS,android,fuchsia}` (Fuchsia stands in for Web since Flutter Web inherits whichever platform target the app declares).
+3. **Layer 3 — Golden image tests.** Per-overlay golden captures via `flutter test --update-goldens` on first run; subsequent runs diff against checked-in PNGs in `flutter_app/test/golden/<component>/<platform>.png`.
+4. **Layer 4 — Integration tests.** `flutter drive integration_test/` against real targets — iPhone 15 simulator (macOS runner), Pixel 8 / API 36 emulator (Linux runner), headless Chrome (any runner). Driven by the same `*.test.ts` interaction script ingested from MDX `<TestPlan>` blocks.
+5. **Layer 5 — Semantic-tree equivalence.** Dump `SemanticsHandle` per overlay; assert that accessibility labels, roles, and focus order are isomorphic across all three platforms (visual differences are expected; semantic ones are bugs).
+6. **Layer 6 — Cross-overlay visual diff.** Pixel-diff iOS-vs-Android-vs-Web goldens with platform-aware tolerances; flag *unintended* divergence (e.g., a missing icon on Web) while ignoring *expected* divergence (e.g., back-button chrome).
+
+### Milestones
+
+1. **`packages/codegen` emits parallel overlays.**
+   - `--platform=ios|android|web|all` flag on the Dart codegen CLI.
+   - `lib/components/<name>/<name>.dart` shell stays handwritten; `ios.g.dart`, `android.g.dart`, `web.g.dart` regenerated together.
+   - Adaptive shim updated to dispatch on `Theme.of(context).platform` to the right `.g.dart`.
+
+2. **`packages/validators/` — one validator per layer.**
+   - Each validator: `(component, platform) → ValidationResult` with stable JSON output.
+   - Validators run as independent CLI binaries (`tsxf-validate-analyze`, `tsxf-validate-golden`, …) so they can be parallelized in CI without sharing process state.
+   - Results aggregated by `tsxf eval` into a per-component matrix:
+
+     ```
+     Button     │ analyze │ unit │ golden │ integ │ semantic │ visual-diff
+     iOS        │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+     Android    │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+     Web        │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+     cross      │   —     │  —   │   —    │   —   │    ✓     │    ✓
+     ```
+
+3. **CI fan-out.**
+   - GitHub Actions matrix: `{platform: [ios, android, web]} × {layer: [analyze, unit, golden, integ, semantic]}` — 15 jobs per PR, plus 2 cross-overlay jobs that depend on the per-platform legs finishing.
+   - macOS runner: iOS + Web. Linux runner: Android + Web. Cross-overlay jobs run on whichever finishes last.
+   - Per-job timeout: 10 min unit / golden, 25 min integration. Hard fail at 30 min.
+
+4. **MDX `<TestPlan>` ingest.**
+   - `packages/ingest/src/visitors/test-plan.ts` — extracts integration-test scripts from MDX frontmatter or fenced `<TestPlan>` blocks.
+   - Codegen emits `integration_test/<component>_test.dart` from the same plan, parameterized per platform.
+
+5. **Validation report surfaces in preview.**
+   - `apps/preview` adds a third pane: per-component validation matrix updated live as validators finish.
+   - Failed cells link to the responsible artifact (analyzer log, golden diff PNG, semantic tree dump).
+
+### Quality gate
+
+A component is **green** only when all six layers pass on all three platforms *and* the two cross-overlay layers pass. CI blocks merges below 100% green on the changed components plus a no-regression check on the rest of the corpus.
+
+**Exit criterion:** the Phase 3 50-fixture corpus is green across all six layers × three platforms, including the two cross-overlay layers. A regression in any one cell blocks merge with a precise pointer to the failing artifact.
 
 ## Explicitly out of scope
 
@@ -159,6 +235,7 @@ These are deliberate omissions; revisit only on user demand.
 - Localized strings (`.arb`) — defer.
 - Liquid Glass native rendering (Flutter team won't ship it).
 - General-purpose React → native transpilation. We optimize for Claude Design output specifically.
+- **Hosted SaaS (single- or multi-tenant), HTTP API, durable job queues, hosted preview URLs, per-org budgets, audit logs, ruleset version rollback chains.** This project is a local CLI + watch daemon plus the pi extension. If hosting is ever needed, build it on top of the pi extension — do not re-implement the conversion pipeline behind an API surface.
 
 ## Open decisions tracked elsewhere
 
@@ -168,5 +245,7 @@ These don't gate Phase 1 but need answers before the listed phase:
 |------:|----------|-------|
 | 1     | Canonical fixture catalog source — known list from Claude Design, or curated? | User |
 | 3     | `ANTHROPIC_API_KEY` budget for LLM fallback. | User |
-| 5     | License & distribution (open source vs internal). | User |
-| 5     | Hosting target for the API (Cloudflare Workers / Fly / Render). | User |
+| 5     | Provider matrix scope — Anthropic-only, or Anthropic + Google + OpenAI for the eval comparison? | User |
+| 5     | Whether to publish `packages/pi-extension` to the pi extension registry, or keep it path-installed. | User |
+| 6     | Pixel-diff tolerance per platform pair (iOS↔Android, Android↔Web, iOS↔Web) — strict, lenient, or component-scoped? | User |
+| 6     | Integration-test device pin — iPhone 15 / Pixel 8 baseline, or track latest each release? | User |
