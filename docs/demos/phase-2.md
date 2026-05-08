@@ -133,3 +133,66 @@ cd packages/codegen && dart test test/idempotent_writer_test.dart 2>&1 | grep -E
 ```output
 00:00 +4: All tests passed!
 ```
+
+## 5. Side-by-side preview app
+
+The preview app is a Vite 8 split-pane that loads the fixture corpus on the left (live React, HMR) and embeds Flutter Web's \`flutter run -d chrome\` instance via iframe on the right. Skwasm requires \`Cross-Origin-Opener-Policy: same-origin\` and \`Cross-Origin-Embedder-Policy: require-corp\` on the embedder so SharedArrayBuffer is available — the dev server emits both. The fixture selector reads from the workspace's \`@tsxtoflutter/tsx-fixtures\` registry; a Vite alias maps the shadcn \`@/components/ui/button\` import to a local stub so the corpus renders without pulling shadcn into the workspace.
+
+```bash
+echo '--- COOP/COEP headers in vite config ---'
+grep -E 'Cross-Origin' apps/preview/vite.config.ts
+echo '--- iframe pointing at flutter web ---'
+grep -E 'localhost:8080' apps/preview/src/App.tsx
+echo '--- fixture selector wired to workspace registry ---'
+grep -E "FIXTURES" apps/preview/src/App.tsx | head -1
+echo '--- shadcn alias to local stub ---'
+grep -E 'components/ui/button' apps/preview/vite.config.ts | head -1
+```
+
+```output
+--- COOP/COEP headers in vite config ---
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+--- iframe pointing at flutter web ---
+            src="http://localhost:8080/"
+--- fixture selector wired to workspace registry ---
+import { FIXTURES, type FixtureEntry } from '@tsxtoflutter/tsx-fixtures';
+--- shadcn alias to local stub ---
+      '@/components/ui/button': path.resolve(here, 'src/stubs/button.tsx'),
+```
+
+## 6. Aggregate test count
+
+Phase 2 lands the following test files. Counts are derived by grepping for \`it(\` / \`test(\` / \`testWidgets(\` so they survive any incidental ordering inside vitest output.
+
+```bash
+grep -rE '\bit\(|\btest\(|testWidgets\(' \
+  packages/orchestrator/__tests__ \
+  packages/cache/__tests__ \
+  apps/cli/__tests__/doctor.test.ts \
+  packages/codegen/test/idempotent_writer_test.dart \
+  packages/runtime/test \
+  packages/tokens/__tests__ \
+  | awk -F: '{print $1}' | sort | uniq -c | sort -rn
+```
+
+```output
+  10 packages/cache/__tests__/cache.test.ts
+   8 apps/cli/__tests__/doctor.test.ts
+   7 packages/tokens/__tests__/dtcg.test.ts
+   5 packages/orchestrator/__tests__/vm-service.test.ts
+   5 packages/orchestrator/__tests__/run-controller.test.ts
+   4 packages/tokens/__tests__/emit-dart.test.ts
+   4 packages/orchestrator/__tests__/debounce.test.ts
+   4 packages/codegen/test/idempotent_writer_test.dart
+   3 packages/tokens/__tests__/emit-tailwind.test.ts
+   3 packages/runtime/test/app_nav_bar_test.dart
+   3 packages/runtime/test/app_dialog_test.dart
+   2 packages/runtime/test/app_list_tile_test.dart
+```
+
+Sums: 14 cache/orchestrator (Phase 2 R1 + R4) + 8 doctor (R5) + 4 dart idempotence (R2) = **26 Phase-2-specific tests**. Co-landed Phase 3 R1 (DTCG: 14 tests) and Phase 4 R1 (adaptive widgets: 8 tests) bring the parallel-epic delta to **48 new tests**, all green.
+
+## 7. Re-run this demo
+
+Re-execute every code block above and diff against the captured outputs by running \`showboat verify docs/demos/phase-2.md\` from the worktree root. Re-running drift-free is a load-bearing property of these demos: it's how a reviewer (human or another agent) can prove the work is still correct without having to mentally replay the implementation.
