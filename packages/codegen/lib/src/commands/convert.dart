@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 
+import '../decoder/ir.dart';
 import '../emitter/component_emitter.dart';
-import '../ir.dart';
 
 class ConvertCommand extends Command<int> {
   ConvertCommand() {
@@ -28,7 +28,7 @@ class ConvertCommand extends Command<int> {
       return 64;
     }
 
-    final emitter = const ComponentEmitter();
+    const emitter = ComponentEmitter();
     final dir = Directory(irDir);
     if (!dir.existsSync()) {
       stderr.writeln('IR dir does not exist: $irDir');
@@ -41,8 +41,22 @@ class ConvertCommand extends Command<int> {
       final program = await IrProgram.readJson(entity);
       for (final component in program.components) {
         final emitted = emitter.emit(component);
-        final base = p.join(outDir, '${component.name.toLowerCase()}');
-        await File('$base.dart').writeAsString(emitted.shellSource);
+        final base = p.join(outDir, emitted.basename);
+        final shellPath = '$base.dart';
+        // Only generate the hand-written shell when missing — otherwise the
+        // developer's edits would get clobbered every regen. Bail out on
+        // existing-but-mismatched part directives.
+        final shell = File(shellPath);
+        if (!shell.existsSync()) {
+          await Directory(p.dirname(shellPath)).create(recursive: true);
+          await shell.writeAsString(emitted.shellSource);
+        } else {
+          final body = await shell.readAsString();
+          if (!body.contains("part '${emitted.basename}.g.dart';")) {
+            stderr.writeln(
+                "Warning: $shellPath exists but lacks `part '${emitted.basename}.g.dart';`");
+          }
+        }
         await File('$base.g.dart').writeAsString(emitted.generatedSource);
         count++;
       }

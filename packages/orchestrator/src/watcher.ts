@@ -1,4 +1,4 @@
-import chokidar from 'chokidar';
+import chokidar, { type FSWatcher } from 'chokidar';
 
 export interface WatchOptions {
   /** Glob(s) to watch, usually `inputs/**\/*.{tsx,mdx}`. */
@@ -26,7 +26,7 @@ export interface Orchestrator {
  *   4. POST to Flutter's VM-service `_reloadSources` endpoint
  */
 export function createOrchestrator(_opts: WatchOptions): Orchestrator {
-  let watcher: chokidar.FSWatcher | null = null;
+  let watcher: FSWatcher | null = null;
 
   return {
     async start() {

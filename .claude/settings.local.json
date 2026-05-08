@@ -11,7 +11,35 @@
       "PowerShell(mise *)",
       "PowerShell(Get-Command *)",
       "Read(//Volumes/ExternalData/admin/Developer/Projects/flutter/**)",
-      "Bash(flutter upgrade *)"
+      "Bash(flutter upgrade *)",
+      "Bash(pnpm install *)",
+      "Bash(mkdir -p /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/__tests__ /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/__snapshots__ /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/src/parsers /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/src/visitors /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/src/styles /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/src/components /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest/src/lower)",
+      "Bash(pnpm exec *)",
+      "Bash(dart pub *)",
+      "Bash(dart test *)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm --filter @tsxtoflutter/ir --filter @tsxtoflutter/ingest --filter @tsxtoflutter/cli typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/ir --filter @tsxtoflutter/ingest --filter @tsxtoflutter/cli build)",
+      "Bash(pnpm --filter @tsxtoflutter/ir --filter @tsxtoflutter/ingest --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/tokens --filter @tsxtoflutter/cli build)",
+      "Bash(pnpm --filter @tsxtoflutter/ir --filter @tsxtoflutter/ingest --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/tokens --filter @tsxtoflutter/cli typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/ingest test)",
+      "Bash(dart analyze *)",
+      "Bash(pnpm --filter @tsxtoflutter/cli dev -- convert packages/tsx-fixtures/fixtures/Button.tsx --out flutter_app/lib/components)",
+      "Bash(bun run *)",
+      "Bash(flutter pub *)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter build *)",
+      "Bash(flutter create *)",
+      "Bash(flutter test *)",
+      "Bash(showboat --help)",
+      "Bash(showboat init *)",
+      "Bash(showboat note *)",
+      "Bash(showboat exec *)",
+      "Bash(showboat pop *)",
+      "Bash(showboat verify *)"
+    ],
+    "additionalDirectories": [
+      "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
     ]
   }
 }
