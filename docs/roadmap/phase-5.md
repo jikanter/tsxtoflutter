@@ -1,99 +1,88 @@
-# Phase 5 — Hosted v1
+# Phase 5 — `pi` harness integration
 
-**Window:** weeks 13+.
+**Status:** Planned. The original Phase 5 (single-tenant Hosted v1) was retired in commit f4e840b (2026-05-08); v0 is local-only per `docs/research/00-synthesis.md`. This spec replaces it with `pi`-harness integration so the same toolchain serves the local watch loop and a headless agent runner. Previously-drafted hosted-service ideas, if revived, live under [`../ideas/phase-7-9.md`](../ideas/phase-7-9.md).
 
-**Goal:** move from local CLI / watch daemon to a single-tenant hosted service. A stranger submits a TSX file via HTTP and receives a hosted Flutter Web preview URL within 60 s, with full trace observability.
+**Window:** weeks 13–15.
 
-**Depends on:** Phase 4 exit criterion. Requires open decisions resolved: hosting target (Workers / Fly / Render) and license / distribution.
+**Goal:** make the conversion pipeline drivable from the [`pi`](https://github.com/anthropics/pi) CLI agent. `pi` becomes the substrate — it owns the LLM call, the session, the tool dispatch, and the provider abstraction (Anthropic / Google / OpenAI). `tsxf` shrinks to the deterministic core (ingest + codegen + cache + watcher) plus a pi extension that exposes those primitives as tools.
+
+**Depends on:** Phase 4 exit criterion. Open decisions (provider matrix scope; whether to publish the extension to the pi registry) tracked in [`../ROADMAP.md`](../ROADMAP.md).
 
 ## Requirements
 
-### R1 — Database (Postgres 16 + Drizzle ORM)
+### R1 — `packages/pi-extension` — tsxtoflutter as a pi extension
 
-- [ ] `Conversion` schema per the synthesis (status, source path, ruleset version, model id, budget consumption, timestamps, parent conversion id for ruleset rollback chains, OTel trace id).
-- [ ] Drizzle migrations under `apps/api/drizzle/`.
-- [ ] Connection pooling sized for queue worker count + API process count + headroom.
-- [ ] Single-tenant in Phase 5: no `tenant_id` column yet (added in Phase 6); document this so Phase 6 migration is straightforward.
+- [ ] `packages/pi-extension/manifest.json` — extension entrypoint per `pi install` conventions.
+- [ ] Tools exposed (mirrors the Phase 3 self-correction loop, now hosted by pi instead of a bespoke runner):
+  - `tsxf_ingest(path) → IRJson` — TSX/MDX → IR JSON, no LLM.
+  - `tsxf_codegen(ir) → { dart, gDart }` — IR → `*.dart` + `*.g.dart`, no LLM.
+  - `tsxf_analyze(path) → AnalyzerReport` — `flutter analyze` over a generated component.
+  - `tsxf_screenshot(path, device) → png` — `flutter drive` golden capture for one device id.
+  - `tsxf_token(name) → TokenValue` — DTCG token resolver.
+  - `tsxf_widget_lookup(query) → WidgetCatalogEntry[]` — runtime catalog lookup.
+- [ ] `pi install ./packages/pi-extension` registers the toolset; `pi list` confirms.
 
-### R2 — Durable job queue (`pg-boss`)
+### R2 — `packages/pi-skill/convert.md` — the conversion skill
 
-- [ ] `pg-boss` with the same Postgres instance — deliberately no Redis dependency yet. Phase 6 introduces BullMQ + Redis when throughput warrants.
-- [ ] Worker boots `flutter_app/` once and reuses it across conversions when ruleset version + tokens hash match (cold flutter boot is ~20 s; not acceptable per-request).
-- [ ] Per-job lease (default 90 s); on lease expiry the job is re-queued with `retries < 3`.
-- [ ] **Per-org daily budget** enforced at the worker before any LLM call; exceeded → job marked `failed_budget`, surfaced in the API response.
+- [ ] Skill prompt orchestrates the deterministic-first / LLM-fallback flow described in Phase 3, but driven by pi's tool loop instead of a hand-rolled `MAX_TURNS=8` runner.
+- [ ] Loaded with `pi --skill ./packages/pi-skill` (or globally via `pi install`).
+- [ ] Provider-agnostic: `pi --provider anthropic --model claude-sonnet-4-6` is the default; the skill works unchanged under `--provider google` for benchmarking.
+- [ ] Prompt-cache breakpoints declared in the skill so the static rules + widget catalog + token map ride pi's caching layer (parity with the `assertSingleCacheBreakpoint()` invariant from Phase 3).
 
-### R3 — HTTP API (`apps/api`)
+### R3 — Orchestrator delegates the LLM hop to pi
 
-- [ ] `POST /conversions` — body `{ tsxSource: string, mdxSource?: string, tokens?: object, options?: {...} }`. Returns `{ conversionId, statusUrl, traceUrl }`.
-- [ ] `GET /conversions/:id` — returns status, partial trace, preview URL when ready.
-- [ ] `POST /conversions/:id/preview` — re-issues a fresh preview URL (extends TTL).
-- [ ] Authentication: bearer token validated against a `service_tokens` table (single-tenant; per-tenant API keys are Phase 6).
-- [ ] OpenAPI 3.1 spec emitted under `apps/api/openapi.yaml`.
+- [ ] `packages/orchestrator/src/llm/pi-runner.ts` — replaces direct `AnthropicLlmClient` calls from Phase 3 with `pi --print --skill convert --mode json` invocations.
+- [ ] One pi session per conversion (`--session-dir .tsxf-cache/sessions/<sha>/`); failed conversions are resumable with `pi --resume <id>` for human-in-the-loop debugging without re-running ingest/codegen.
+- [ ] Session JSON exported to traces (`tsxf trace open` opens the pi session alongside the existing OTel span view).
+- [ ] In-process `AnthropicLlmClient` runner stays as a fallback so neither path silently regresses.
 
-### R4 — Preview hosting
+### R4 — Headless CI mode
 
-- [ ] **Cloudflare Pages** for preview URLs (the open decision); per-conversion deployment with TTL via `CF_PAGES_DEPLOY_HOOK`.
-- [ ] Required headers: `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp` (Skwasm requirement, same as Phase 2).
-- [ ] Default TTL: 24 h. `POST /conversions/:id/preview` extends.
-- [ ] Cleanup worker prunes expired deployments.
+- [ ] `tsxf eval --runner=pi` runs the golden corpus through pi in `--print` mode; no terminal, no interactive UI.
+- [ ] Provider matrix: same corpus, same skill, run under `anthropic` and `google` providers; per-provider quality + cost report emitted to `.tsxf-cache/eval/<run-id>.json`.
+- [ ] `pi --no-session` for ephemeral runs in CI; sessions only persisted for local dev.
 
-### R5 — Observability
+### R5 — `tsxf doctor` extended
 
-- [ ] OpenTelemetry GenAI semantic conventions for all LLM spans (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `gen_ai.response.id`, cache hit attributes).
-- [ ] Spans shipped to **Langfuse** (the synthesis's named target).
-- [ ] `tsxf trace open <conversion-id>` opens the Langfuse UI link from the conversion record.
-- [ ] Logs structured (JSON), shipped to the same destination; correlated with the span trace id.
-
-### R6 — Storage tier upgrade (CAS)
-
-- [ ] Parse / translate / build caches migrated from filesystem (Phase 2) to S3-compatible storage (R2 or MinIO; flag `STORAGE_BACKEND=fs|r2|minio`).
-- [ ] Same content-addressed key shape from Phase 2 (`sha256(...)`); fs and S3 backends share the interface.
-- [ ] Hot tier (Redis) **not** added in Phase 5 — defer to Phase 6 alongside BullMQ.
-
-### R7 — Operational
-
-- [ ] Health endpoint `GET /healthz` (process liveness) and `GET /readyz` (DB + queue + storage reachable).
-- [ ] Graceful shutdown drains in-flight jobs.
-- [ ] Migrations gated in deployment; CI fails on migration drift.
-- [ ] Runbook in `docs/operations.md` covering rotation, backup, queue stalls, budget exhaustion.
+- [ ] Verifies `pi` is on `$PATH`, the `tsxtoflutter` extension is installed, the `convert` skill resolves, and at least one provider has a usable key.
+- [ ] Surfaces actionable install commands (`pi install ...`) when checks fail.
 
 ## File map
 
 ```
-apps/api/{src/{routes,middleware,auth,openapi}, drizzle/{schema.ts, migrations/}, package.json}
-apps/api/openapi.yaml
-apps/worker/{src/{worker.ts, run-conversion.ts, cleanup.ts}, package.json}
-packages/storage/src/{fs.ts, s3.ts, index.ts}
-packages/observability/src/{otel.ts, langfuse.ts, gen-ai-attributes.ts}
-docs/operations.md
-infra/cloudflare-pages/{wrangler.toml, deploy.sh}
-infra/postgres/init.sql
+packages/pi-extension/{manifest.json, src/{ingest,codegen,analyze,screenshot,token,widget-lookup}.ts}
+packages/pi-skill/convert.md
+packages/orchestrator/src/llm/pi-runner.ts
+packages/orchestrator/__tests__/pi-runner.test.ts
+apps/cli/src/commands/eval.ts            (--runner=pi flag)
+apps/cli/src/commands/doctor.ts          (pi/extension/skill checks)
+apps/cli/src/commands/trace.ts           (pi session JSON view)
+.tsxf-cache/sessions/<sha>/              (gitignored; pi session artifacts)
+.tsxf-cache/eval/<run-id>.json           (gitignored; provider-matrix reports)
 ```
 
 ## Performance / cost targets
 
 | Metric | Target |
 |---|---|
-| API p50 latency `POST /conversions` (queue submit) | ≤ 200 ms |
-| End-to-end conversion → preview URL ready (warm worker, single component) | ≤ 60 s |
-| Worker cold-boot (first request after deploy) | ≤ 90 s |
-| Per-conversion cost (single component) | ≤ $0.50 (carry-over from Phase 3) |
-| Preview-deploy TTL cleanup latency | ≤ 1 h after expiry |
+| Per-conversion cost (50-fixture corpus avg, Anthropic provider) | ≤ $0.50 (carry-over from Phase 3) |
+| Prompt-cache hit rate on system prompt (pi-routed) | ≥ 80% |
+| Provider-matrix eval runtime on 50-fixture corpus | ≤ 10 min on developer laptop |
 
 ## Constraints
 
-- **Hard:** budget is fail-closed at the worker boundary; never silently overrun even under retry.
-- **Hard:** all secrets via env vars / secrets manager; never committed.
-- **Hard:** OpenAPI spec is the source of truth for the API surface; CI fails on drift.
-- **Ask first:** introduction of new infra components beyond what's listed (e.g., adding Redis here instead of Phase 6).
+- **Hard:** budget tracker semantics (`BudgetExceededError`) survive the pi seam — the runner adapter must surface pi's stop reasons as the same error shape.
+- **Hard:** prompt caching is non-optional; CI test asserts the skill declares a cache breakpoint exactly once.
+- **Hard:** components must continue to compile for iOS / Android / Web on every fixture (Phase 4 invariant).
+- **Soft:** keep the Anthropic-only fallback path reachable; never delete the in-process client until two consecutive corpus runs match cost + quality across runners.
+- **Ask first:** publishing `packages/pi-extension` to the pi extension registry vs path-installed-only.
 
 ## Risks
 
-- Cold Flutter boot per worker dominates request latency. Mitigation: keep worker pool warm; pre-fork a pool of `flutter_app/` instances per ruleset/tokens combination.
-- Cloudflare Pages deploy hook rate-limits under burst. Mitigation: per-org concurrency cap at the worker; fall back to a queue with deploy-hook back-pressure.
-- Postgres-as-queue under load is the BullMQ argument. Mitigation: monitor queue depth + p95 lock wait; the moment either crosses threshold, advance Phase 6 timing.
-- Trace volume to Langfuse exceeds plan. Mitigation: sample non-error spans (default 100% errors, 10% successes); flagged config.
+- pi session protocol drift between releases. Mitigation: pin the pi version in `tsxf doctor`; add a contract test that round-trips a known skill output through the runner adapter.
+- Provider-matrix surfaces non-Anthropic widget-catalog hallucinations. Mitigation: catalog post-validation already lives in the Phase 3 tool loop; the skill must reuse it verbatim, not re-implement.
+- Two runners drift on closed-catalog enforcement. Mitigation: shared validator module imported by both the in-process client and the pi-runner adapter.
 
 ## Exit criterion
 
-A stranger can submit a TSX file via `POST /conversions` and get back a hosted Flutter Web preview URL within 60 s, with the full trace navigable in Langfuse via `tsxf trace open`.
+The Phase 3 LLM fallback path is reachable in two equivalent ways — the existing in-process `AnthropicLlmClient` runner (kept as a fallback) and `pi --skill convert`. The 50-fixture golden corpus passes both runners with ≥ 80% prompt-cache hit rate; provider-matrix eval produces a quality + cost comparison across at least two providers.

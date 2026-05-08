@@ -1,6 +1,6 @@
 # Phase 3 — Token system + LLM fallback
 
-**Status:** ✅ Done. Recorded here so later phases have a known-good starting state.
+**Status:** ✅ Done overall — emitters, LLM fallback, tool loop, and tracing land green; corpus is at 14/50 fixtures and the project-root `tokens.json` / regenerated theme files are deferred. Demo: [docs/demos/phase-3.md](../demos/phase-3.md).
 
 **Window:** weeks 7–9.
 
@@ -42,6 +42,7 @@
 ### R4 — Golden corpus + automated quality gate 🟡
 
 - [~] **Corpus**: 14 fixtures landed (Button, PrimaryButton, SecondaryButton, GhostButton, IconButton, InfoCard, StatBadge, TextField, CheckboxRow, SwitchRow, ListRow, Divider, Avatar, PageHeader). Spec target is 50; the eval framework is corpus-size agnostic so growing the corpus is a follow-on PR.
+- [x] **Byte-for-byte e2e goldens** (`test/e2e/`) added post-Phase-3 in commits c88ce78 / 23c491a. Spawns `bun run apps/cli/src/index.ts convert <fixture> --no-llm` for every fixture and `Buffer.equals`-diffs every emitted file against `test/e2e/expected/<FixtureName>/`. 13/14 fixtures pass; `PageHeader.tsx` is on the `SKIPPED` list with a one-liner reason (ternary JSX children emit raw TSX into the `.g.dart`).
 - [x] `tsxf eval --corpus <dir> --out <file> --trace-dir <dir>` walks the corpus, runs ingest, captures per-fixture pass/fail, and writes `eval-results.json` plus per-conversion ndjson traces.
 - [x] `dart analyze` and `dart format --set-exit-if-changed --output=none` gates run when `dart` is on PATH and a generated `*.dart` exists for the fixture under `flutter_app/lib/components/`. Both gates report `skipped` (with a reason) rather than blocking when prerequisites are absent.
 - [ ] Flutter widget golden tests (per-component PNG goldens under `flutter_app/test/golden/`) — Phase 4.

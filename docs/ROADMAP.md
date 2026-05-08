@@ -47,83 +47,79 @@ Demo: [docs/demos/phase-1.md](./demos/phase-1.md) — re-runnable showboat docum
 
 **Exit criterion:** the Button fixture round-trips end to end and renders correctly on Flutter Web with no manual intervention.
 
-## Phase 2 — Preview + hot loop (weeks 5–6)
+## Phase 2 — Preview + hot loop (weeks 5–6) — DONE
 
-Bring the inner loop to ≤2 seconds save → repaint, side-by-side.
+Bring the inner loop to ≤2 seconds save → repaint, side-by-side. Demo: [docs/demos/phase-2.md](./demos/phase-2.md).
 
 ### Milestones
 
-1. **Orchestrator wired.**
+1. **Orchestrator wired.** ✅
    - `packages/orchestrator/src/watcher.ts` — chokidar on TSX/MDX inputs → `ingest()` → write IR JSON → spawn `dart run tsxtoflutter:tsxtoflutter convert` → POST to Flutter VM-service `_reloadSources`.
    - Debounce window: 100 ms.
-2. **Side-by-side preview.**
+2. **Side-by-side preview.** ✅
    - `apps/preview/src/App.tsx` dynamically renders the fixture under inspection (left pane) and embeds Flutter Web preview (right pane, iframe with COOP/COEP headers).
-   - Diff overlay (Phase 3 — visual diff via Playwright; deferred).
-3. **Per-component cache (parse + translate tiers).**
-   - `.tsxf-cache/parse/<sha>.json` and `.tsxf-cache/xlate/<sha>.json` keyed per the synthesis.
+   - Visual diff overlay deferred to Phase 6 cross-overlay layer.
+3. **Per-component cache (parse + translate + build tiers).** ✅
+   - `packages/cache` ships filesystem-backed `.tsxf-cache/{parse,xlate,build}/<sha>.json` with `tsxf cache stats|clear|gc`.
 
-**Exit criterion:** save a TSX file → both panes update in ≤2 s on a developer laptop.
-
-## Phase 3 — Token system + LLM fallback (weeks 7–9)
+**Exit criterion:** ✅ `tsxf doctor` exits 0; preview emits Skwasm headers; `watch` produces idempotent Dart output. Live save→see latency against `flutter run -d chrome` measured manually; CI guards regressions via the orchestrator + cache + codegen vitest/dart suites.
 
 ### Milestones
 
-1. **DTCG token pipeline.**
-   - `packages/tokens/src/dtcg.ts` — load DTCG v1 JSON, resolve aliases.
-   - Style Dictionary v4 wiring to emit (a) Tailwind config (`tailwind.config.ts`) and (b) Dart `theme.dart` constants consumed by `AppTokens`.
-   - First pass: 12 colors, spacing scale (already in runtime), 4 type tokens.
+1. **DTCG token pipeline.** 🟡 _emitters shipped, project artifacts deferred_
+   - ✅ `packages/tokens/src/dtcg.ts` — load DTCG v1 JSON, resolve aliases (cycle detection via `DtcgCycleError`).
+   - ✅ `packages/tokens/src/{emit-tailwind,emit-dart}.ts` replace the Style Dictionary indirection from the original plan; both emitters are unit-test green and produce `GeneratedTokens` Dart + Tailwind theme objects.
+   - ⏳ Canonical `tokens.json` at the project root, regenerated `flutter_app/lib/theme.g.dart`, and `tailwind.config.ts` are still TODO; the watcher integration that flows token edits through codegen also pending.
 
-2. **Sonnet 4.6 fallback for IR subtrees flagged "complex".**
-   - Per-subtree complexity score (node count + presence of hooks/effects); >20 OR after 2 deterministic-rule failures escalates to LLM.
-   - Anthropic SDK wired with a static system prompt (rules + widget catalog + token map) marked with a cache breakpoint.
-   - `claude-api` skill conventions for prompt caching and budget enforcement.
+2. **Sonnet 4.6 fallback for IR subtrees flagged "complex".** ✅
+   - Per-subtree complexity score (`packages/llm/src/complexity.ts`) + `packages/ingest/src/translate/decide.ts` mirror; >20 score OR ≥2 deterministic failures escalate.
+   - `AnthropicLlmClient` + `LlmClient` seam; `buildSystemPrompt()` enforces a single ephemeral cache breakpoint (test-asserted).
+   - `BudgetTracker` fails closed on cost / token / tool-turn overruns (`BudgetExceededError`).
 
-3. **Tool-use self-correction loop.**
-   - Tools: `run_flutter_analyze`, `render_widget_screenshot`, `get_design_token`, `lookup_widget_catalog`.
-   - Loop bound: `MAX_TURNS=8`; per-conversion budget enforced (`maxCostUsd: 0.50` default).
-   - Fail-closed on budget exceeded; mark conversion `failed` and surface partial trace.
+3. **Tool-use self-correction loop.** ✅
+   - Tools: `run_flutter_analyze`, `render_widget_screenshot` (renderer seam — wires to a real instance in Phase 6), `get_design_token`, `lookup_widget_catalog`.
+   - `runToolLoop` bound at `DEFAULT_MAX_TURNS=8`; tool errors surface as `tool_result` blocks (`is_error: true`); budget breach short-circuits.
 
-4. **Golden corpus + automated quality gate.**
-   - Grow `packages/tsx-fixtures` to 50 components.
-   - `tsxf eval --corpus packages/tsx-fixtures` runs the full pipeline; gates:
-     - `dart analyze` exit 0
-     - `dart format --set-exit-if-changed` exit 0
-     - Flutter widget golden tests
-     - Semantic diff (ast-grep pattern match) against expected Dart
-   - CI blocks merges below threshold.
+4. **Golden corpus + automated quality gate.** 🟡 _14/50 fixtures, byte-for-byte e2e goldens added_
+   - ✅ `tsxf eval --corpus <dir> --out <file> --trace-dir <dir>` runs the corpus and emits `eval-results.json` plus per-conversion ndjson traces; non-zero exit on regression.
+   - ✅ `dart analyze` + `dart format --set-exit-if-changed` gates run (skipped with reason when prerequisites absent).
+   - ✅ `test/e2e/` byte-for-byte goldens diff `tsxf convert` output against checked-in expected Dart for 13 of 14 fixtures (`PageHeader.tsx` quarantined for a known ternary-JSX codegen bug).
+   - ⏳ Corpus growth to 50 fixtures; Flutter widget golden tests + ast-grep semantic diff move to Phase 6 layers.
 
-**Exit criterion:** 50-fixture corpus passes the quality gate; per-conversion cost stays under $0.50 with ≥80% prompt-cache hit rate.
+5. **Tracing scaffold.** ✅
+   - `packages/tracing` ships OTel-shaped span names + `MemoryExporter` / `StdoutJsonExporter` / `FileNdjsonExporter`; `tsxf trace open <conversion-id>` reads ndjson traces.
 
-## Phase 4 — Platform polish (weeks 10–12)
+**Exit criterion (status):** corpus quality gate is wired and CI-enforceable; budget + cache breakpoint enforced in tests. Outstanding: 50-fixture corpus growth, project-root `tokens.json` + regenerated Tailwind/Dart theme, and live measurement of per-conversion cost / cache-hit rate end-to-end.
 
-Day-1 platform musts from the iOS and Android agents.
+## Phase 4 — Platform polish (weeks 10–12) — DONE (held-back items called out below)
+
+Day-1 platform musts from the iOS and Android agents. Demo: [docs/demos/phase-4.md](./demos/phase-4.md).
 
 ### iOS milestones
 
-- Adaptive widget library extended (`AppNavBar`, `AppListTile`, `AppDialog`).
-- Codegen emits `BouncingScrollPhysics()` on iOS scrollables, `CupertinoPageRoute` for forward navigation.
-- `HapticFeedback.lightImpact()` on primary actions, `mediumImpact()` on destructive.
-- `SafeArea` top + bottom on every generated screen; `MediaQuery.viewInsetsOf` for IME.
-- `ios/Config/{Debug,Release}.xcconfig` template + `fastlane/Matchfile` scaffolded so signing survives regen.
-- iOS 26 SDK / Xcode 26 pinned; deployment target iOS 15; SPM-first.
-- App Store privacy strings (`NSCameraUsageDescription` etc.) generated from MDX frontmatter.
+- ✅ Adaptive widget library extended (`AppNavBar`, `AppListTile`, `AppDialog` alongside `AppButton` / `AppSwitch` / `AppScaffold`).
+- 🟡 Codegen helpers shipped (`packages/codegen/lib/src/mapping/ios.dart`: adaptive `BouncingScrollPhysics`, `CupertinoPageRoute`, `HapticFeedback`); inline injection into `widgets.dart` is held back until variant-aware emission lands so phase-1 goldens stay byte-stable.
+- ✅ `SafeArea` + `MediaQuery.viewInsetsOf` wrapper exposed via `emitter/platform_aware.dart` and integrated.
+- ✅ `flutter_app/ios/Config/{Common,Debug,Release}.xcconfig` + `fastlane/{Fastfile,Matchfile}` scaffolded; CI restores hand-maintained configs after `flutter create` regen.
+- ✅ iOS 26 SDK / iOS 15 deployment target pinned; SPM-first.
+- 🟡 App Store privacy emitter shipped (`packages/ingest/src/mdx/privacy.ts`, 19-key `PRIVACY_KEY_BY_PERMISSION`); MDX visitor wiring still TODO so emission isn't yet driven by frontmatter.
 
 ### Android milestones
 
-- `useMaterial3: true` + `DynamicColorBuilder` already shipped in `flutter_app/main.dart`; extend `AppTokens` mapping to cover all M3 roles (`surfaceContainer*`, `outlineVariant`).
-- `PopScope` translation for any "confirm-before-close" pattern.
-- `LayoutBuilder` breakpoints from Tailwind responsive variants (≥600dp, ≥840dp, ≥1200dp).
-- AGP/Gradle template: `compileSdk=36`, `targetSdk=36`, `minSdk=24`, R8 + AAB output, 16 KB page-size aligned.
-- `enableOnBackInvokedCallback="true"` in manifest.
-- `key.properties` + `signingConfig` from env vars; never baked into Gradle.
+- ✅ `AppTokens` extended with full M3 surface tonality (`surfaceContainer{Lowest,Low,High,Highest}`, `outlineVariant`, `inverseSurface`, `inversePrimary`, error roles); `AppTokens.fromColorScheme` factory wires the seed-color fallback.
+- 🟡 Codegen helpers shipped (`mapping/android.dart`: `PopScope` wrapper, `LayoutBuilder` breakpoints); like iOS, hot-path injection is held back behind variant detection.
+- ✅ AGP/Gradle template: `compileSdk=36`, `targetSdk=36`, `minSdk=24`, R8 + AAB, 16 KB page-aligned (CI enforces `zipalign -P 16`).
+- ✅ `enableOnBackInvokedCallback="true"` in manifest.
+- ✅ `key.properties.template` + env-backed `signingConfig`; nothing baked into Gradle.
+- ✅ `MaterialBreakpoints` (compact/medium/expanded/large/extraLarge) + `BuildContext.windowSizeClass` in `packages/runtime`.
 
-### CI matrix
+### Cross-cutting
 
-- macOS runner: iPhone 15 simulator boot + `flutter test integration_test/`.
-- Linux runner: API 34 + API 36 Android emulator boot + `flutter test integration_test/`.
-- All three Flutter targets (web, ios, android) build green on every PR.
+- ✅ `aria-*` / `role` → `Semantics` mapping (`mapping/semantics.dart`) integrated into `emitElement`; no-op when no a11y props so existing fixture goldens stay byte-identical.
+- ✅ CI matrix: macOS-14 iPhone 15 simulator job + Linux Android emulator matrix (API 34, API 36) alongside the existing Flutter Web / WASM job. Hand-maintained configs are restored post `flutter create` so signing + Gradle survive.
+- 🟡 Per-platform fixture golden screenshots (`flutter_app/test/golden/{web,ios,android}/`) — directory scaffolding committed; per-fixture PNGs are deferred to Phase 6 where the validation overlay owns them.
 
-**Exit criterion:** Button fixture renders correctly with platform-appropriate chrome on Flutter Web, iOS simulator, and Android emulator. CI passes the full matrix.
+**Exit criterion:** ✅ runtime + scaffolding + CI matrix green. Held back behind future work: variant-aware iOS / Android emission inside `widgets.dart`, the MDX visitor that calls the privacy emitter, and the per-platform pixel-diff goldens (Phase 6).
 
 ## Phase 5 — `pi` harness integration (weeks 13–15)
 

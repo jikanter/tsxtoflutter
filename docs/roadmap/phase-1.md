@@ -10,46 +10,45 @@
 
 ## Requirements
 
-### R1 — Ingest: TSX → IR JSON (`packages/ingest`)
+### R1 — Ingest: TSX → IR JSON (`packages/ingest`) ✅
 
-- [ ] `src/parsers/tsx.ts` — `@babel/parser` wrapper with `plugins: ['typescript', 'jsx']`. Emits AST consumed by visitors.
-- [ ] `src/visitors/jsx-element.ts` — `JSXElement` → `IRElement`. Semantic, not structural: `<div className="flex flex-col gap-2">` collapses to `IRElement{tag:'stack', style:{...}}`, **not** a mirror tree.
-- [ ] `src/visitors/jsx-attribute.ts` — props/events lifting onto the IR node.
-- [ ] `src/styles/tailwind.ts` — Tailwind utility class → `NormalizedStyle`. Phase 1 needs only the classes Button uses: `gap-*`, `h-*`, `w-*`, `px-*`, `py-*`, `rounded-*`, color variants.
-- [ ] `src/components/shadcn-map.ts` — first entry: shadcn `Button` → `tag:'button'` with default-variant tokens.
-- [ ] `src/components/lucide-map.ts` — first entry: `ChevronRight` → `chevron_right`.
-- [ ] Stable component ID = `sha256(path + exportName + contentHash)`; recorded on the root IR node so Dart filenames don't churn across regens.
-- [ ] IR validated against `packages/ir` zod schema at the seam before write.
+- [x] `src/parsers/tsx.ts` — `@babel/parser` wrapper with `plugins: ['typescript', 'jsx']`.
+- [x] `src/visitors/jsx-element.ts` — `JSXElement` → `IRElement`. Semantic collapse, not mirror tree.
+- [x] `src/visitors/jsx-attribute.ts` — props/events lifting onto the IR node.
+- [x] `src/styles/tailwind.ts` — Tailwind utility class → `NormalizedStyle` for the phase-1 class subset.
+- [x] `src/components/shadcn-map.ts` — first entry: shadcn `Button` → `tag:'button'`.
+- [x] `src/components/lucide-map.ts` — first entry: `ChevronRight` → `chevron_right`.
+- [x] Stable component ID = `sha256(path + exportName + contentHash)` recorded on the root IR node.
+- [x] IR validated against `packages/ir` zod schema at the seam before write.
 
-### R2 — IR contract (`packages/ir`)
+### R2 — IR contract (`packages/ir`) ✅
 
-- [ ] Zod schema covering `IRElement`, `NormalizedStyle`, `IRConditional`, props, events, and the root `IRComponent` envelope.
-- [ ] `IRComponent.metadata` carries source path, export name, ruleset version, and the stable component ID.
-- [ ] TS types exported; the same shape is the target schema for the Dart-side decoder.
+- [x] Zod schema covering `IRElement`, `NormalizedStyle`, `IRConditional`, props, events, and the root `IRComponent` envelope.
+- [x] `IRComponent.metadata` carries source path, export name, ruleset version, and the stable component ID.
+- [x] TS types exported; the same shape is the target schema for the Dart-side decoder.
 
-### R3 — Codegen: IR JSON → `*.dart` + `*.g.dart` (`packages/codegen`)
+### R3 — Codegen: IR JSON → `*.dart` + `*.g.dart` (`packages/codegen`) ✅
 
-- [ ] `lib/src/decoder/ir.dart` — JSON → strongly-typed Dart IR mirroring the zod schema. Reject unknown tags (closed widget catalog).
-- [ ] `lib/src/mapping/widgets.dart` — `IRElement{tag:'button'}` → `FilledButton(...)` builder.
-- [ ] `lib/src/mapping/tailwind.dart` — `NormalizedStyle` → widget wrappers (`Padding`, `Row.spacing` / `Column.spacing` from Flutter 3.27+, `Icon`, `ConstrainedBox`).
-- [ ] `lib/src/emitter/component_emitter.dart` — emits the **pair**:
-  - `foo.dart` — hand-written shell, only generated if missing. Holds class declaration + constructor (props). Uses `part 'foo.g.dart';`.
-  - `foo.g.dart` — regenerated every run. `Widget _$FooBuild(...)` returning the tree. Header: `// GENERATED CODE - DO NOT MODIFY BY HAND`. Uses `part of 'foo.dart';`.
-- [ ] `dart_style` `DartFormatter` post-pass on every emitted file.
-- [ ] `bin/tsxtoflutter.dart convert --ir <dir> --out <dir>` one-shot subcommand.
+- [x] `lib/src/decoder/ir.dart` — JSON → strongly-typed Dart IR; closed catalog rejects unknown tags.
+- [x] `lib/src/mapping/widgets.dart` — `IRElement{tag:'button'}` → `FilledButton(...)` builder.
+- [x] `lib/src/mapping/tailwind.dart` — `NormalizedStyle` → widget wrappers (`Padding`, `Row.spacing` / `Column.spacing`, `Icon`, `ConstrainedBox`).
+- [x] `lib/src/emitter/component_emitter.dart` — emits the `foo.dart` (handwritten shell, generated only if missing) + `foo.g.dart` (regenerated every run, `// GENERATED CODE - DO NOT MODIFY BY HAND` header) pair via `part`/`part of`.
+- [x] `dart_style` `DartFormatter` post-pass on every emitted file.
+- [x] `bin/tsxtoflutter.dart convert --ir <dir> --out <dir>` one-shot subcommand.
 
-### R4 — CLI glue (`apps/cli`)
+### R4 — CLI glue (`apps/cli`) ✅
 
-- [ ] `tsxf convert <input...> [--out <dir>]` — runs ingest, writes IR JSON to a temp dir under `.tsxtoflutter/ir/`, spawns the Dart codegen subprocess, surfaces its exit code.
-- [ ] `tsxf convert ... --no-llm` flag honored (Phase 1 has no LLM path; the flag is wired so CI gating works in later phases).
-- [ ] Non-zero exit on schema validation failure, codegen error, or Dart formatter error.
+- [x] `tsxf convert <input...> [--out <dir>]` runs ingest, writes IR JSON, spawns the Dart codegen subprocess, surfaces its exit code.
+- [x] `tsxf convert ... --no-llm` flag honored.
+- [x] Non-zero exit on schema validation failure, codegen error, or Dart formatter error.
 
-### R5 — Test gates
+### R5 — Test gates ✅
 
-- [ ] **Vitest fixture test:** `packages/ingest` ingests `Button.tsx` and the result snapshot-matches `__snapshots__/Button.ir.json`.
-- [ ] **Dart golden test:** `packages/codegen` decodes the same IR JSON and emits a pair that matches `test/golden/welcome_button.dart` + `welcome_button.g.dart`.
-- [ ] **End-to-end smoke (manual + scripted):** `tsxf convert packages/tsx-fixtures/fixtures/Button.tsx --out flutter_app/lib/components/` produces files; `flutter analyze` exits 0; `flutter run -d chrome` from `flutter_app/` shows the button.
-- [ ] CI runs all three gates on every PR.
+- [x] **Vitest fixture test** — `packages/ingest` ingests `Button.tsx` and snapshot-matches `__snapshots__/Button.ir.json`.
+- [x] **Dart golden test** — `packages/codegen` decodes the same IR JSON and emits a pair that matches `test/golden/welcome_button.{dart,g.dart}`.
+- [x] **End-to-end smoke** — `tsxf convert packages/tsx-fixtures/fixtures/Button.tsx --out flutter_app/lib/components/` produces compiling Dart; `flutter analyze` exits 0; the button renders on Flutter Web.
+- [x] **Byte-for-byte e2e goldens** (`test/e2e/`) — added in c88ce78 / 23c491a; runs `tsxf convert --no-llm` against every fixture under `packages/tsx-fixtures/fixtures/` and `Buffer.equals`-diffs each emitted file against `test/e2e/expected/<FixtureName>/`. `PageHeader.tsx` is the one quarantined fixture (codegen emits raw TSX for ternary JSX children).
+- [x] CI runs all three gates on every PR.
 
 ## File map (creates / edits in this phase)
 

@@ -1,94 +1,126 @@
-# Phase 6 — Multi-tenant SaaS
+# Phase 6 — Validation overlay across parallel platform features
 
-**Window:** months 4+.
+**Status:** Planned. The original Phase 6 (multi-tenant SaaS) was retired in commit f4e840b (2026-05-08); v0 stays local-only per `docs/research/00-synthesis.md`. This spec replaces it with a per-platform validation overlay layered over the same IR. Hosted multi-tenant ideas, if revived, live under [`../ideas/phase-7-9.md`](../ideas/phase-7-9.md).
 
-**Goal:** turn the single-tenant hosted service from Phase 5 into a multi-tenant SaaS with per-tenant quotas, audit, and rollback chains. **Defer until Phase 5 has been used in anger** — the synthesis is explicit that v0 is local-only and Phase 5 is single-tenant; do not start Phase 6 on schedule, start it on signal.
+**Window:** weeks 16–20.
 
-**Depends on:** Phase 5 exit criterion **plus** measured signals that Phase 5 is constrained on:
-- queue throughput (pg-boss lock wait p95 > 1 s sustained, **or**
-- scheduling features (rate limiting, flow DAGs) that pg-boss can't express, **or**
-- multi-tenant demand from real users.
+**Goal:** treat iOS, Android, and Web as three parallel feature sets layered over the same IR — each with its own platform-specific code paths, its own validators, and its own evidence trail. Phase 4 made each platform render; Phase 6 proves they stay in sync as the corpus grows. The unit of validation is a `(component, platform, layer)` triple. Layers stack; platforms run in parallel.
 
-If none of those signals are present, Phase 6 stays parked.
+**Depends on:** Phase 5 exit criterion (pi-routed runner is the substrate for cross-platform validation jobs in CI). Open decisions tracked in [`../ROADMAP.md`](../ROADMAP.md).
+
+## Parallel platform overlays
+
+For every component, three artifact sets are emitted from the same IR and held side-by-side:
+
+- **iOS overlay** — Cupertino-flavored adaptive substitutions (`CupertinoPageRoute`, `BouncingScrollPhysics`, haptics on actions, large-title nav).
+- **Android overlay** — Material 3 + dynamic color, predictive back, M3 motion specs.
+- **Web overlay** — Material 3 baseline, keyboard-first focus rings, reduced-motion media query honored.
+
+Each overlay is a separate column under `flutter_app/lib/components/<name>/{ios,android,web}.g.dart`, all sharing the same `<name>.dart` shell. Overlays are selected at runtime by the existing adaptive shim — Phase 6 is about validating each one in isolation, not changing the runtime selection.
+
+## Validation layers (each runs per-platform, in parallel)
+
+1. **Layer 1 — Static analysis.** `flutter analyze` per platform target; `dart format --set-exit-if-changed`; ast-grep semantic-pattern match against expected Dart per overlay.
+2. **Layer 2 — Widget unit tests.** `flutter test` with `debugDefaultTargetPlatformOverride = TargetPlatform.{iOS,android,fuchsia}` (Fuchsia stands in for Web since Flutter Web inherits whichever platform target the app declares).
+3. **Layer 3 — Golden image tests.** Per-overlay golden captures via `flutter test --update-goldens` on first run; subsequent runs diff against checked-in PNGs in `flutter_app/test/golden/<component>/<platform>.png`.
+4. **Layer 4 — Integration tests.** `flutter drive integration_test/` against real targets — iPhone 15 simulator (macOS runner), Pixel 8 / API 36 emulator (Linux runner), headless Chrome (any runner). Driven by the same `*.test.ts` interaction script ingested from MDX `<TestPlan>` blocks.
+5. **Layer 5 — Semantic-tree equivalence.** Dump `SemanticsHandle` per overlay; assert that accessibility labels, roles, and focus order are isomorphic across all three platforms (visual differences are expected; semantic ones are bugs).
+6. **Layer 6 — Cross-overlay visual diff.** Pixel-diff iOS-vs-Android-vs-Web goldens with platform-aware tolerances; flag *unintended* divergence (e.g., a missing icon on Web) while ignoring *expected* divergence (e.g., back-button chrome).
 
 ## Requirements
 
-### R1 — Queue upgrade: BullMQ + Redis
+### R1 — `packages/codegen` emits parallel overlays
 
-- [ ] BullMQ for throughput, rate limiting, and **flow DAGs** (multi-step conversions: ingest → translate → codegen → analyze → screenshot, each independently retryable).
-- [ ] Redis as the queue backend; sized for peak concurrency × 2.
-- [ ] Migration plan from `pg-boss`: dual-write window (jobs enqueued to both); cut over once BullMQ throughput verified; drain `pg-boss`; remove dependency.
-- [ ] Hot CAS tier on the same Redis (deferred from Phase 5 R6).
+- [ ] `--platform=ios|android|web|all` flag on the Dart codegen CLI.
+- [ ] `lib/components/<name>/<name>.dart` shell stays handwritten; `ios.g.dart`, `android.g.dart`, `web.g.dart` regenerated together.
+- [ ] Adaptive shim updated to dispatch on `Theme.of(context).platform` to the right `.g.dart`.
+- [ ] Phase 4's held-back variant-aware emission (iOS scrollables/page-routes/haptics; Android responsive-variant `LayoutBuilder`) lands here as the per-overlay branches.
 
-### R2 — Multi-tenancy data model
+### R2 — `packages/validators/` — one validator per layer
 
-- [ ] Add `tenant_id` to every table created in Phase 5; backfill the existing single-tenant data into a `default` tenant.
-- [ ] Row-level security in Postgres (`USING (tenant_id = current_setting('app.tenant_id')::uuid)`) on every tenant-scoped table.
-- [ ] Per-request middleware sets `app.tenant_id` from the API key; missing tenant context → 401.
+- [ ] Each validator: `(component, platform) → ValidationResult` with stable JSON output.
+- [ ] Validators run as independent CLI binaries (`tsxf-validate-analyze`, `tsxf-validate-golden`, …) so they can be parallelized in CI without sharing process state.
+- [ ] Results aggregated by `tsxf eval` into a per-component matrix:
 
-### R3 — Per-tenant API keys + quota enforcement
+  ```
+  Button     │ analyze │ unit │ golden │ integ │ semantic │ visual-diff
+  iOS        │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+  Android    │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+  Web        │   ✓     │  ✓   │   ✓    │   ✓   │    ✓     │    —
+  cross      │   —     │  —   │   —    │   —   │    ✓     │    ✓
+  ```
 
-- [ ] `api_keys` table: `(id, tenant_id, prefix, hashed_secret, scopes, created_at, revoked_at)`.
-- [ ] Quota enforcement at the queue worker: per-tenant daily USD budget, per-tenant concurrency cap, per-tenant request rate (token bucket via Redis).
-- [ ] 429 responses include `Retry-After` and the bucket type that throttled (`X-Throttle-Reason: daily-budget|concurrency|rate`).
-- [ ] Admin endpoints under `/admin/tenants/:id/{quota,keys,audit}` (separate auth scope).
+### R3 — CI fan-out
 
-### R4 — Audit log
+- [ ] GitHub Actions matrix: `{platform: [ios, android, web]} × {layer: [analyze, unit, golden, integ, semantic]}` — 15 jobs per PR, plus 2 cross-overlay jobs that depend on the per-platform legs finishing.
+- [ ] macOS runner: iOS + Web. Linux runner: Android + Web. Cross-overlay jobs run on whichever finishes last.
+- [ ] Per-job timeout: 10 min unit / golden, 25 min integration. Hard fail at 30 min.
+- [ ] Existing Phase 4 matrix (Web / iOS sim / Android emulator) is the substrate; Phase 6 fans the validators across it.
 
-- [ ] Append-only `audit_events` table: `(id, tenant_id, actor, action, target, payload_hash, occurred_at)`.
-- [ ] Events written for: API key creation/revocation, quota changes, conversion submission, ruleset rollback, preview deploy/cleanup.
-- [ ] Retention 13 months; offload to cold storage past that.
+### R4 — MDX `<TestPlan>` ingest
 
-### R5 — Versioned ruleset releases + rollback chains
+- [ ] `packages/ingest/src/visitors/test-plan.ts` — extracts integration-test scripts from MDX frontmatter or fenced `<TestPlan>` blocks.
+- [ ] Codegen emits `integration_test/<component>_test.dart` from the same plan, parameterized per platform.
+- [ ] Lifts the MDX-not-supported diagnostic that currently gates Phase 4 R4 (privacy emitter) — both visitors land in the same epic.
 
-- [ ] `rulesets` table tracking version, hash, release date, parent.
-- [ ] `Conversion.parentConversionId` (already shipped in Phase 5 schema) is now used: re-running a conversion with a newer ruleset records the parent; the rollback UI walks the chain.
-- [ ] `tsxf rollback <conversion-id> --to-ruleset <version>` re-converts the source against an older ruleset for diff inspection.
+### R5 — Validation report surfaces in preview
 
-### R6 — Visual regression UI
-
-- [ ] Playwright + custom diff dashboard surfaces per-fixture pixel deltas across ruleset versions.
-- [ ] Per-tenant view: their fixtures, their golden history.
-- [ ] Webhook on regression detected (configurable per tenant).
+- [ ] `apps/preview` adds a third pane: per-component validation matrix updated live as validators finish.
+- [ ] Failed cells link to the responsible artifact (analyzer log, golden diff PNG, semantic tree dump).
 
 ## File map
 
 ```
-packages/queue/src/{bullmq.ts, flows.ts, migration-from-pg-boss.ts, index.ts}
-apps/api/src/middleware/{tenant.ts, quota.ts, audit.ts}
-apps/api/src/routes/admin/{tenants,keys,audit}.ts
-apps/api/drizzle/migrations/                       (multi-tenant migrations)
+packages/codegen/lib/src/emitter/overlay_emitter.dart
+packages/codegen/bin/tsxtoflutter.dart                (--platform flag)
+packages/validators/{src/{analyze,unit,golden,integ,semantic,visual-diff}.ts, package.json}
+packages/validators/bin/tsxf-validate-{analyze,unit,golden,integ,semantic,visual-diff}.ts
 
-apps/dashboard/                                    (Visual regression UI; new app)
-apps/dashboard/{src/{pages, components, api}, package.json}
+packages/ingest/src/visitors/test-plan.ts
+packages/ingest/src/mdx/                               (MDX visitor pipeline; lifts Phase 4 R4 gate)
+flutter_app/integration_test/<component>_test.dart    (regenerated)
+flutter_app/test/golden/<component>/{ios,android,web}.png
+flutter_app/lib/components/<component>/{component.dart, ios.g.dart, android.g.dart, web.g.dart}
 
-infra/redis/                                       (provisioning + sizing notes)
-docs/multi-tenant-runbook.md
+apps/preview/src/ValidationMatrix.tsx
+apps/cli/src/commands/eval.ts                          (per-component matrix aggregation)
+.github/workflows/ci.yml                                (15-job matrix + 2 cross-overlay legs)
 ```
+
+## Performance targets
+
+| Metric | Target |
+|---|---|
+| Full validation matrix runtime per PR | ≤ 30 min wall-clock (matrix-fanned) |
+| Per-component golden diff tolerance | platform-pair-scoped (open decision) |
+| Semantic-tree equivalence assertion runtime per component | ≤ 2 s |
+| Cross-overlay visual-diff false-positive rate | ≤ 5% per release |
 
 ## Constraints
 
-- **Hard:** RLS is mandatory on every tenant-scoped table; CI test asserts no table missing the policy.
-- **Hard:** tenant isolation verified by an integration test that proves tenant A cannot read tenant B's conversions or previews.
-- **Hard:** quota enforcement is fail-closed; never silently overrun even under retry storms.
-- **Ask first:** any change to the Phase 5 API surface beyond additive endpoints — existing single-tenant clients must continue to work.
+- **Hard:** a component is **green** only when all six layers pass on all three platforms *and* the two cross-overlay layers pass.
+- **Hard:** CI blocks merges below 100% green on the changed components plus a no-regression check on the rest of the corpus.
+- **Hard:** components compile for iOS / Android / Web on every overlay (Phase 4 invariant carries forward).
+- **Ask first:** introduction of any new emulator/simulator beyond the Phase 4 matrix (iPhone 15, Pixel 8 / API 34 + 36, headless Chrome).
 
 ## Risks
 
-- pg-boss → BullMQ migration drops jobs. Mitigation: dual-write window above; reconcile job counts before cut-over; never remove pg-boss until reconcile == 0.
-- RLS missed on a new table. Mitigation: migration linter that fails CI when a new table doesn't have a policy and isn't on an explicit allowlist.
-- Tenant data leakage via cache key collisions. Mitigation: cache keys include `tenant_id` for tenant-scoped artifacts (note: parse cache stays global since TSX source is the input, but translate cache is tenant-scoped because ruleset version may diverge).
-- Visual regression UI volume blows up storage. Mitigation: retain only N most recent goldens per fixture per tenant (default N=10), configurable.
+- 15-job matrix doubles CI minutes. Mitigation: gate the matrix on `paths-filter` so doc-only PRs skip; cache simulator and emulator artifacts aggressively.
+- Pixel-diff false positives swamp signal. Mitigation: per-pair tolerance, configurable per fixture; auto-quarantine fixtures with > N flaps over a rolling window.
+- Semantic-tree equivalence over-fits to current Flutter version. Mitigation: capture semantics under the pinned Flutter version in `pubspec.yaml`; when the floor bumps, regen all baselines together.
+- MDX visitor lands late and blocks both the privacy emitter (Phase 4 R4) and `<TestPlan>` ingest. Mitigation: ship the visitor first, then layer privacy + test-plan emitters on top in separate PRs.
 
 ## Exit criterion
 
-Two tenants can use the service concurrently with full isolation, per-tenant quotas enforced, audit log present, and a ruleset rollback path proven via integration test. The visual regression UI flags a deliberate fixture change across ruleset versions.
+The Phase 3 50-fixture corpus is green across all six layers × three platforms, including the two cross-overlay layers. A regression in any one cell blocks merge with a precise pointer to the failing artifact.
 
 ## Out of scope (still)
 
 The synthesis's "Explicitly out of scope" list carries forward unchanged into Phase 6:
+
 - Figma → Flutter input.
 - Server Components / Next.js routing translation.
 - Localized strings (`.arb`).
 - Liquid Glass native rendering.
 - General-purpose React → native transpilation.
+- **Hosted SaaS (single- or multi-tenant), HTTP API, durable job queues, hosted preview URLs, per-org budgets, audit logs, ruleset version rollback chains.** If hosting is ever needed, build it on top of the pi extension — do not re-implement the conversion pipeline behind an API surface. Speculative ideas live under `../ideas/phase-7-9.md`.

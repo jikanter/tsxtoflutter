@@ -1,7 +1,7 @@
 # Phase 4 — Platform polish
 
 
-**Status:** ✅ Done with some deferrals. Recorded here so later phases have a known-good starting state.
+**Status:** ✅ Done with deferrals. Runtime widgets, M3 tonality, codegen helpers, semantics integration, platform scaffolding, and the CI matrix all landed in commit 829c925. Held back: variant-aware injection of iOS/Android emit helpers into `widgets.dart`, the MDX visitor that calls the privacy emitter, and per-platform pixel-diff goldens (deferred to Phase 6's validation overlay). Demo: [docs/demos/phase-4.md](../demos/phase-4.md).
 **Window:** weeks 10–12.
 
 **Goal:** Day-1 platform musts on iOS and Android, with a CI matrix that exercises all three Flutter targets (Web, iOS simulator, Android emulator) on every PR. The Button fixture (and the broader 50-fixture corpus from Phase 3) must render with platform-appropriate chrome on each.
@@ -10,85 +10,80 @@
 
 ## Pre-work
 
-- [ ] Generate platform folders (not committed in Phase 0; Flutter version pins them):
-  ```pwsh
-  cd flutter_app
-  flutter create --platforms=ios,android .
-  ```
-- [ ] Phase 0 `flutter_app/pubspec.yaml` already constrains `sdk: ^3.6.0` / `flutter: ^3.27.0`. Verify against the upgraded local toolchain (Flutter 3.41.9 / Dart 3.11.5 at the time of Phase 4 kickoff); bump the floor if a Phase 4 dependency requires it.
+- [x] Platform folders generated locally; CI regenerates them per-job via `flutter create --platforms=ios|android` and then restores hand-maintained `xcconfig` / Gradle / manifest files from git.
+- [x] `flutter_app/pubspec.yaml` toolchain floor verified against the local Flutter 3.41.9 / Dart 3.11.5; bumps tracked there.
 
 ## iOS requirements
 
-### R1 — Adaptive widget library extension (`packages/runtime`) ✅ _(landed early in the parallel epic)_
+### R1 — Adaptive widget library extension (`packages/runtime`) ✅
 
-- [x] `AppNavBar`, `AppListTile`, `AppDialog` alongside existing `AppButton` / `AppSwitch` / `AppScaffold`. Files: `lib/src/adaptive/{app_nav_bar,app_list_tile,app_dialog}.dart`. Eight `flutter_test` widget tests assert the Material-on-Android / Cupertino-on-iOS branching plus `AppDialog.show()` action-value plumbing.
+- [x] `AppNavBar`, `AppListTile`, `AppDialog` alongside existing `AppButton` / `AppSwitch` / `AppScaffold` under `lib/src/adaptive/`. Eight `flutter_test` widget tests assert the Material-on-Android / Cupertino-on-iOS branching plus `AppDialog.show()` action-value plumbing.
 - [x] Each branches on `Theme.of(context).platform`. **No `Platform.isIOS ? ... : ...` ternaries in user-facing code.** `AppNavBar` implements `PreferredSizeWidget` so it slots into `AppScaffold.appBar`. `AppDialog.show<T>()` returns the chosen action's `value` for either platform.
-- [ ] Cupertino flavoring opt-in via MDX frontmatter `platform: "ios-native"` — _MDX frontmatter routing is still TODO; the runtime widgets exist and are ready to be selected by codegen._
+- [ ] Cupertino flavoring opt-in via MDX frontmatter `platform: "ios-native"` — runtime widgets are ready to be selected by codegen, but the routing depends on the same MDX visitor that gates R4 privacy emission.
 
-### R2 — Codegen iOS-aware emission (`packages/codegen`)
+### R2 — Codegen iOS-aware emission (`packages/codegen`) 🟡 helpers shipped, hot-path injection held
 
-- [ ] iOS scrollables emit `BouncingScrollPhysics()`.
-- [ ] Forward navigation emits `CupertinoPageRoute` (under adaptive shim) when target is iOS.
-- [ ] Primary actions emit `HapticFeedback.lightImpact()`; destructive emit `mediumImpact()`.
-- [ ] Every generated screen wraps body in `SafeArea` (top + bottom). Compatible with notch / Dynamic Island.
-- [ ] `MediaQuery.viewInsetsOf(context)` for IME; `Scaffold.resizeToAvoidBottomInset: true` default.
-- [ ] Icon-only buttons emit `tooltip:` (VoiceOver reads tooltip as label).
-- [ ] No fixed-height text containers — Dynamic Type clipping is App Review smell.
+- [x] `mapping/ios.dart::IosEmit.scrollPhysics()` returns adaptive `BouncingScrollPhysics` / `ClampingScrollPhysics`.
+- [x] `IosEmit.pageRoute(...)` returns adaptive `CupertinoPageRoute` / `MaterialPageRoute`.
+- [x] `IosEmit.haptic(HapticIntent)` emits `HapticFeedback.lightImpact|mediumImpact|selectionClick`.
+- [x] `emitter/platform_aware.dart` wraps generated screen bodies in `SafeArea` + `MediaQuery.viewInsetsOf`.
+- [ ] Helpers are not yet inlined by `mapping/widgets.dart::emitElement` — held back until variant-aware emission lands so existing fixture goldens stay byte-stable. Tracked in 829c925 commit notes.
+- [ ] Icon-only-button `tooltip:` requirement and "no fixed-height text containers" Dynamic-Type rule — to lock in once injection lands.
 
-### R3 — iOS toolchain pin
+### R3 — iOS toolchain pin ✅
 
-- [ ] Xcode 26 / iOS 26 SDK pinned in `flutter_app/ios/`.
-- [ ] Deployment target: iOS 15.
-- [ ] SPM-first; CocoaPods only where SPM unavailable.
-- [ ] `flutter_app/ios/Config/{Debug,Release}.xcconfig` template — **hand-maintained, never overwritten by regen**. Documented in `flutter_app/ios/Config/README.md`.
-- [ ] `flutter_app/fastlane/Matchfile` scaffolded so signing survives regen.
+- [x] Xcode 26 / iOS 26 SDK pinned via `flutter_app/ios/Config/Common.xcconfig`.
+- [x] Deployment target: `IPHONEOS_DEPLOYMENT_TARGET = 15.0`.
+- [x] SPM-first; CocoaPods only where SPM unavailable (documented in `Config/README.md`).
+- [x] `Config/{Debug,Release}.xcconfig` hand-maintained; CI restores them with `git checkout HEAD -- ios/Config/` after `flutter create`.
+- [x] `fastlane/{Fastfile,Matchfile}` scaffolded; `Matchfile` reads cert repo URL from env.
 
-### R4 — App Store privacy
+### R4 — App Store privacy 🟡 emitter shipped, MDX visitor pending
 
-- [ ] `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, `NSLocationWhenInUseUsageDescription`, etc. generated from MDX frontmatter (`permissions: { camera: "Take a photo of …" }`) into `Info.plist`.
-- [ ] Missing required strings → hard codegen error pointing at the offending fixture frontmatter.
+- [x] `packages/ingest/src/mdx/privacy.ts::emitInfoPlistPrivacyStrings` + 19-key `PRIVACY_KEY_BY_PERMISSION` map — pure function from parsed permissions to plist XML + diagnostics; 11 vitest cases.
+- [ ] MDX visitor wiring that pulls `frontmatter.permissions` into the emitter — phase-1 ingest still emits an `mdx-not-supported` diagnostic, so the privacy emitter is unreachable from the live pipeline.
+- [ ] Hard codegen error on missing required strings — gated behind the MDX visitor above.
 
 ## Android requirements
 
-### R5 — Material 3 dynamic color (`packages/runtime` + `flutter_app/lib/main.dart`)
+### R5 — Material 3 dynamic color (`packages/runtime` + `flutter_app/lib/main.dart`) ✅
 
-- [ ] `useMaterial3: true` + `DynamicColorBuilder` already shipped in Phase 0; extend `AppTokens` mapping to cover the full M3 role set: `surfaceContainer{,Lowest,Low,High,Highest}`, `outlineVariant`, `inverseSurface`, `inversePrimary`, error roles.
-- [ ] Seed-color fallback wired when `DynamicColorBuilder` returns null.
+- [x] `useMaterial3: true` + `DynamicColorBuilder` shipped from Phase 0; `AppTokens` extended with `surfaceContainer{,Lowest,Low,High,Highest}`, `outlineVariant`, `inverseSurface`, `inversePrimary`, `errorContainer`, `onErrorContainer`.
+- [x] `AppTokens.fromColorScheme` factory wires the seed-color fallback when `DynamicColorBuilder` returns null.
 
-### R6 — Codegen Android-aware emission
+### R6 — Codegen Android-aware emission 🟡 helpers shipped, hot-path injection held
 
-- [ ] `PopScope` (not `WillPopScope`) for any "confirm-before-close" pattern; required by Android 15+ predictive back.
-- [ ] Tailwind responsive variants (`md:`, `lg:`, `xl:`) → `LayoutBuilder` breakpoints (≥ 600 dp, ≥ 840 dp, ≥ 1200 dp). Constants live in `packages/runtime/lib/breakpoints.dart`.
-- [ ] `enableOnBackInvokedCallback="true"` in `flutter_app/android/app/src/main/AndroidManifest.xml`.
+- [x] `mapping/android.dart::AndroidEmit.popScope(...)` wraps a child with `PopScope` (never `WillPopScope`); required-args validation enforced.
+- [x] `MaterialBreakpoints` (compact <600 / medium 600 / expanded 840 / large 1200 / extraLarge 1600 dp) + `windowSizeClassFor` + `BuildContext.windowSizeClass` / `isMediumOrWider` in `packages/runtime/lib/src/breakpoints.dart`.
+- [x] `enableOnBackInvokedCallback="true"` in `flutter_app/android/app/src/main/AndroidManifest.xml`.
+- [ ] `mapping/widgets.dart` does not yet route Tailwind responsive variants (`md:`/`lg:`/`xl:`) through `LayoutBuilder` — held with R2 behind variant-aware emission.
 
-### R7 — Android Gradle template
+### R7 — Android Gradle template ✅
 
-- [ ] `compileSdk = 36`, `targetSdk = 36`, `minSdk = 24`.
-- [ ] R8 enabled for release; AAB output configured.
-- [ ] 16 KB page-size aligned (Android 15+ requirement on 64-bit).
-- [ ] `key.properties` + `signingConfig` populated **from env vars** (`ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`); never baked into Gradle.
-- [ ] ProGuard keep-rules pre-written per closed-widget-catalog plugin.
+- [x] `compileSdk=36`, `targetSdk=36`, `minSdk=24` in `flutter_app/android/app/build.gradle.kts`.
+- [x] R8 enabled for release; AAB output configured; CI runs `zipalign -c -P 16 -v 4` to enforce 16 KB page-size alignment.
+- [x] `key.properties.template` + env-driven `signingConfig` (`ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`); nothing baked into Gradle.
+- [x] `proguard-rules.pro` keep-rules committed.
 
 ## Cross-cutting
 
-### R8 — `aria-*` → `Semantics`
+### R8 — `aria-*` → `Semantics` ✅
 
-- [ ] Mapping table from `docs/research/03-android-platform.md` and `04-ios-platform.md` implemented in `packages/codegen/lib/src/mapping/semantics.dart`.
-- [ ] Coverage: `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-hidden`, `aria-pressed`, `aria-expanded`, `aria-disabled`, `role="button"`, `role="heading"`, `role="link"`.
+- [x] `packages/codegen/lib/src/mapping/semantics.dart::SemanticsMapping.fromProps` covers `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-hidden`, `aria-pressed`, `aria-expanded`, `aria-disabled`, `role="button"`, `role="heading"`, `role="link"`.
+- [x] Integrated into `mapping/widgets.dart::emitElement`; no-op when no a11y props so existing fixture goldens stay byte-identical.
 
-### R9 — CI matrix (`.github/workflows/ci.yml`)
+### R9 — CI matrix (`.github/workflows/ci.yml`) ✅
 
-- [ ] **macOS runner:** boot iPhone 15 simulator (iOS 18+); run `flutter test integration_test/`.
-- [ ] **Linux runner:** boot Android API 34 + API 36 emulators; run `flutter test integration_test/`.
-- [ ] **Existing Web job** continues with `flutter build web --wasm`.
-- [ ] All three target builds green-required on every PR.
-- [ ] `tsxf eval --corpus packages/tsx-fixtures --platforms web,ios,android` enforces parity.
+- [x] **macOS-14 runner** boots an iPhone 15 simulator (`futureware-tech/simulator-action@v5`), regenerates `ios/`, restores hand-maintained `xcconfig` / `fastlane` from git, runs `flutter analyze` + `flutter test` + `flutter build ios --simulator --no-codesign`, then `flutter test integration_test/` when present.
+- [x] **Linux runner** matrix `api-level: [34, 36]` boots Android emulators via `reactivecircus/android-emulator-runner@v2`, regenerates `android/`, restores hand-maintained `build.gradle.kts` / manifest / proguard / `key.properties.template`, runs `flutter analyze` + `flutter test` + `flutter test integration_test/`, then `zipalign` 16 KB enforcement.
+- [x] Existing **Web job** continues with `flutter build web --wasm`.
+- [ ] `tsxf eval --platforms web,ios,android` parity gate — pending Phase 6's per-platform validators.
 
-### R10 — Fixture corpus parity
+### R10 — Fixture corpus parity 🟡 scaffolding only
 
-- [ ] All 50 Phase-3 fixtures must render correctly under all three targets.
-- [ ] Per-platform golden screenshots stored under `flutter_app/test/golden/{web,ios,android}/`.
-- [ ] Visual diff tolerance ≤ 0.1% pixel delta per fixture.
+- [x] `flutter_app/test/golden/{web,ios,android}/` directories scaffolded with `.gitkeep` placeholders.
+- [x] `flutter_app/integration_test/smoke_test.dart` boots `App`, asserts ≥1 frame, no exceptions; runs on all three CI runners.
+- [ ] Per-fixture pixel-diff goldens — deferred to Phase 6 layer 3 (golden-image tests). Phase 4 stops at scaffolding so the corpus growth + golden capture can land alongside cross-overlay validation.
 
 ## File map
 
@@ -126,4 +121,4 @@ flutter_app/test/golden/{web,ios,android}/
 
 ## Exit criterion
 
-Button fixture (and the rest of the Phase-3 corpus) renders correctly with platform-appropriate chrome on Flutter Web, iOS simulator, and Android emulator. CI passes the full matrix on every PR.
+Button fixture (and the rest of the Phase-3 corpus) renders correctly with platform-appropriate chrome on Flutter Web, iOS simulator, and Android emulator. CI passes the full matrix on every PR. **Status:** runtime + scaffolding + matrix all green; per-fixture chrome correctness rides on the held-back variant-aware emission and the Phase 6 cross-overlay layer.
