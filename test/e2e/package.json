@@ -1,0 +1,15 @@
+{
+  "name": "@tsxtoflutter/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Byte-for-byte e2e: TSX fixtures -> generated Flutter files vs expected goldens.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "update-goldens": "UPDATE_GOLDENS=1 vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

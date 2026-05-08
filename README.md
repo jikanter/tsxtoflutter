@@ -122,6 +122,19 @@ cd ../../flutter_app ; flutter analyze ; flutter test
 
 CI runs the same gates plus a Flutter Web WASM build (`flutter build web --wasm`); see `.github/workflows/ci.yml`.
 
+### End-to-end goldens (`test/e2e/`)
+
+`test/e2e/` is a thin trampoline that pins the byte-for-byte output of `tsxf convert` against every fixture in `packages/tsx-fixtures/fixtures/`. Inputs are *not* duplicated — the runner reads them straight from the fixtures package; only the expected Dart files live alongside the test, under `test/e2e/expected/<FixtureName>/`.
+
+```pwsh
+pnpm --filter @tsxtoflutter/e2e test              # assert: runs `tsxf convert` per fixture, diffs vs goldens
+pnpm --filter @tsxtoflutter/e2e update-goldens    # rewrite goldens after an intentional codegen change
+```
+
+Each test spawns `bun run apps/cli/src/index.ts convert <fixture> --out <tmpdir> --no-llm`, walks the output, and compares each file with `Buffer.equals` (byte-for-byte). On mismatch, the failure renders as a unified string diff for readability. Fixtures known to expose codegen bugs are listed in the `SKIPPED` map in `e2e.test.ts` with a one-line reason — currently `PageHeader.tsx` (conditional JSX child emits raw TSX into the `.g.dart`).
+
+The suite needs `bun` and `dart` on `PATH`; without them each test fails fast with an actionable message rather than silently passing.
+
 ## Configuration
 
 - `tsxtoflutter.config.ts` (project root, optional) — pin ruleset version, Claude model tier, per-conversion budgets. Defaults are fine for most use cases.
