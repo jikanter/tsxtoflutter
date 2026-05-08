@@ -16,9 +16,11 @@ The skeleton is in place; nothing is wired yet. This is the snapshot you're look
 
 **Exit criterion:** ✅ `pnpm install` and `flutter pub get` succeed; `pnpm typecheck` is green; `flutter run -d chrome` from `flutter_app/` lights up the placeholder home screen.
 
-## Phase 1 — Happy-path round-trip (weeks 2–4)
+## Phase 1 — Happy-path round-trip (weeks 2–4) — DONE
 
 Get a single fixture (`Button.tsx`) traveling end-to-end TSX → IR → Dart → rendered Flutter widget. Coverage matters less than a working pipeline.
+
+Demo: [docs/demos/phase-1.md](./demos/phase-1.md) — re-runnable showboat document covering ingest snapshot, codegen goldens, end-to-end CLI conversion, `flutter analyze`, and the Cta widget test.
 
 ### Milestones
 

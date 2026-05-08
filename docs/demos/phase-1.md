@@ -37,20 +37,12 @@ export function Cta({ label, onGo }: CtaProps) {
 The TS-side pipeline lowers TSX to a semantic IR. The Vitest snapshot test asserts that `Button.tsx` round-trips through `@tsxtoflutter/ingest` to a fixed IR shape committed at `packages/ingest/__snapshots__/Button.ir.json`.
 
 ```bash
-pnpm --filter @tsxtoflutter/ingest test 2>&1 | tail -10
+pnpm --filter @tsxtoflutter/ingest test 2>&1 | grep -E "passed|failed" | grep -vE "ms\)"
 ```
 
 ```output
-
- RUN  v2.1.9 /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest
-
- ✓ __tests__/Button.test.ts (3 tests) 10ms
-
  Test Files  1 passed (1)
       Tests  3 passed (3)
-   Start at  13:02:58
-   Duration  318ms (transform 78ms, setup 0ms, collect 146ms, tests 10ms, environment 0ms, prepare 36ms)
-
 ```
 
 The lowered IR collapses Tailwind utilities (`gap-2`, `h-4`, `w-4`) into a typed `NormalizedStyle`, lifts the `onClick` handler to a `tap` event, and resolves `<ChevronRight />` via the lucide map. The component ID is the deterministic `sha256(path + exportName + contentHash)`.
@@ -103,12 +95,10 @@ jq '{components: [.components[] | {id, name, params, body: {kind: .body.kind, ta
 The Dart side decodes the IR (closed widget catalog: unknown tags throw at decode time) and emits a hand-editable shell + a regenerated `*.g.dart` joined by `part`/`part of`. `dart_style` formats both.
 
 ```bash
-cd packages/codegen && dart test 2>&1 | tail -3
+cd packages/codegen && dart test 2>&1 | grep -E "All tests passed"
 ```
 
 ```output
-00:00 +9: test/component_emitter_test.dart: ComponentEmitter (Cta golden) (tearDownAll)
-00:00 +9: test/component_emitter_test.dart: IR decoder rejects unknown semantic tags
 00:00 +10: All tests passed!
 ```
 
@@ -179,24 +169,31 @@ Widget _$CtaBuild(Cta widget, BuildContext context) {
 The exit criterion: `flutter analyze` exits 0 on the generated component and the widget test pumps the rendered Cta button.
 
 ```bash
-cd flutter_app && flutter analyze 2>&1 | tail -2
+cd flutter_app && flutter analyze 2>&1 | grep -oE "^(No issues found!|[0-9]+ issue.*)"
 ```
 
 ```output
-Analyzing flutter_app...                                        
-No issues found! (ran in 1.1s)
+No issues found!
 ```
 
 ```bash
-cd flutter_app && flutter test 2>&1 | tail -3
+cd flutter_app && flutter test 2>&1 | grep -E "All tests passed"
 ```
 
 ```output
-00:00 +0: loading /Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/flutter_app/test/widget_test.dart
-00:00 +0: generated Cta button renders its label and fires onGo
 00:00 +1: All tests passed!
 ```
 
 ## 6. Verify the demo
 
 Re-running every code block above and diffing the output against what's recorded:
+
+All eight blocks above re-execute and match. Phase 1 is locked.
+
+```bash
+showboat verify docs/demos/phase-1.md > /dev/null 2>&1 && echo 'all blocks match'
+```
+
+```output
+all blocks match
+```
