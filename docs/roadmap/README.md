@@ -5,12 +5,14 @@ Per-phase requirement specs. The high-level plan and exit criteria live in `../R
 | Phase | Spec | Status | Window |
 |------:|------|--------|--------|
 | 0 | [phase-0.md](./phase-0.md) — Bootstrap | ✅ Done | week 1 |
-| 1 | [phase-1.md](./phase-1.md) — Happy-path round-trip | Planned | weeks 2–4 |
-| 2 | [phase-2.md](./phase-2.md) — Preview + hot loop | Planned | weeks 5–6 |
-| 3 | [phase-3.md](./phase-3.md) — Token system + LLM fallback | Planned | weeks 7–9 |
-| 4 | [phase-4.md](./phase-4.md) — Platform polish | Planned | weeks 10–12 |
+| 1 | [phase-1.md](./phase-1.md) — Happy-path round-trip | ✅ Done | weeks 2–4 |
+| 2 | [phase-2.md](./phase-2.md) — Preview + hot loop | ✅ Done | weeks 5–6 |
+| 3 | [phase-3.md](./phase-3.md) — Token system + LLM fallback | 🟡 R1 done, R2–R5 planned | weeks 7–9 |
+| 4 | [phase-4.md](./phase-4.md) — Platform polish | 🟡 R1 done, R2–R10 planned | weeks 10–12 |
 | 5 | [phase-5.md](./phase-5.md) — Hosted v1 | Planned | weeks 13+ |
 | 6 | [phase-6.md](./phase-6.md) — Multi-tenant SaaS | Deferred | months 4+ |
+
+Demo docs for completed phases live in [`../demos/`](../demos/) — every demo is an executable Showboat document re-runnable via `showboat verify`.
 
 ## How to read a phase spec
 

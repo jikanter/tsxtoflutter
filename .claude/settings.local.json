@@ -43,7 +43,13 @@
       "Bash(dart analyze *)",
       "Bash(git mv *)",
       "Bash(pnpm --filter @tsxtoflutter/cache build)",
-      "Bash(pnpm --filter @tsxtoflutter/cache test)"
+      "Bash(pnpm --filter @tsxtoflutter/cache test)",
+      "Bash(timeout 3 bun apps/cli/src/index.ts watch packages/tsx-fixtures/fixtures --ir-out /tmp/tsxf-watch-smoke/ir --out /tmp/tsxf-watch-smoke/out --flutter-app /tmp/tsxf-watch-smoke/flutter --cache-dir /tmp/tsxf-watch-smoke/cache)",
+      "Bash(pnpm --filter @tsxtoflutter/preview typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/preview build)",
+      "Bash(pnpm --filter @tsxtoflutter/cache --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/cli --filter @tsxtoflutter/tokens --filter @tsxtoflutter/ingest test)",
+      "Bash(flutter test *)",
+      "Bash(showboat --help)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"
