@@ -1,5 +1,8 @@
+import path from 'node:path';
 import { Command } from 'commander';
 import { ingest } from '@tsxtoflutter/ingest';
+import { runDoctor } from './commands/doctor.js';
+import { runCache } from './commands/cache.js';
 
 const program = new Command();
 
@@ -46,8 +49,14 @@ program
   .command('cache')
   .description('Inspect or clear the parse/translate/build cache.')
   .argument('<sub>', 'stats | clear | gc')
-  .action((sub: string) => {
-    console.log(`TODO: tsxf cache ${sub}`);
+  .option('--cache-dir <dir>', 'cache root', '.tsxf-cache')
+  .option('--max-age-days <n>', 'gc threshold', '30')
+  .action(async (sub: string, opts: { cacheDir: string; maxAgeDays: string }) => {
+    const code = await runCache(sub, {
+      cacheDir: path.resolve(opts.cacheDir),
+      maxAgeDays: Number(opts.maxAgeDays),
+    });
+    process.exit(code);
   });
 
 program
@@ -61,8 +70,10 @@ program
 program
   .command('doctor')
   .description('Check that flutter, dart, bun, and required env vars are present.')
-  .action(() => {
-    console.log('TODO: tsxf doctor');
+  .option('--repo-root <dir>', 'project root used for flutter_app discovery', process.cwd())
+  .action(async (opts: { repoRoot: string }) => {
+    const code = await runDoctor(path.resolve(opts.repoRoot));
+    process.exit(code);
   });
 
 export function run(argv: string[]): void {
