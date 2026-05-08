@@ -7,7 +7,7 @@ Per-phase requirement specs. The high-level plan and exit criteria live in `../R
 | 0 | [phase-0.md](./phase-0.md) — Bootstrap | ✅ Done | week 1 |
 | 1 | [phase-1.md](./phase-1.md) — Happy-path round-trip ([demo](../demos/phase-1.md)) | ✅ Done (regression testing) | weeks 2–4 |
 | 2 | [phase-2.md](./phase-2.md) — Preview + hot loop | ✅ Done (in testing) | weeks 5–6 |
-| 3 | [phase-3.md](./phase-3.md) — Token system + LLM fallback | 🟡 In progress (R1 done) | weeks 7–9 |
+| 3 | [phase-3.md](./phase-3.md) — Token system + LLM fallback | 🟡 R1–R3 + R5 done; R4 corpus partial | weeks 7–9 |
 | 4 | [phase-4.md](./phase-4.md) — Platform polish | 🟡 R1 done, R2–R10 planned | weeks 10–12 |
 | 5 | [phase-5.md](./phase-5.md) — Hosted v1 | Planned | weeks 13+ |
 | 6 | [phase-6.md](./phase-6.md) — Multi-tenant SaaS | Deferred | months 4+ |
