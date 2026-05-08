@@ -1,0 +1,45 @@
+# fastlane lanes for the Flutter iOS Runner.
+#
+# HAND-MAINTAINED. Survives codegen regen.
+#
+# Lanes:
+#   ios setup_xcconfigs   — re-point Runner.xcodeproj at ios/Config/*.xcconfig
+#                           after `flutter create` regenerates the project file.
+#   ios certs             — `match development` for local devs.
+#   ios beta              — TestFlight upload from CI tag pushes only.
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Re-bind Runner.xcodeproj's baseConfigurationReference to ios/Config/*.xcconfig"
+  lane :setup_xcconfigs do
+    update_project_team(
+      path: "ios/Runner.xcodeproj",
+      teamid: ENV["DEVELOPMENT_TEAM_ID"]
+    )
+    set_xcconfig_value(
+      path: "ios/Config/Common.xcconfig",
+      name: "BUNDLE_ID_PREFIX",
+      value: ENV["BUNDLE_ID_PREFIX"] || "com.example.tsxtoflutter"
+    )
+  end
+
+  desc "Sync development certs + profiles via match"
+  lane :certs do
+    match(type: "development", readonly: true)
+  end
+
+  desc "Build + upload to TestFlight (CI tag pushes only)"
+  lane :beta do
+    setup_ci if ENV["CI"]
+    match(type: "appstore", readonly: true)
+    build_app(
+      workspace: "ios/Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build/ios/ipa"
+    )
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+end

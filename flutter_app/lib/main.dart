@@ -40,16 +40,8 @@ class App extends StatelessWidget {
       colorScheme: scheme,
       useMaterial3: true,
       extensions: [
-        AppTokens(
-          surface: scheme.surface,
-          surfaceContainer: scheme.surfaceContainerHigh,
-          onSurface: scheme.onSurface,
-          mutedForeground: scheme.onSurfaceVariant,
-          primary: scheme.primary,
-          onPrimary: scheme.onPrimary,
-          destructive: scheme.error,
-          onDestructive: scheme.onError,
-          border: scheme.outlineVariant,
+        AppTokens.fromColorScheme(
+          scheme,
           text: const AppTextTokens(
             titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),

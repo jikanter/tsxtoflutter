@@ -1,0 +1,25 @@
+// Debug build settings for the Flutter iOS Runner.
+//
+// HAND-MAINTAINED. The codegen pipeline regenerates `Runner.xcodeproj` cleanly
+// every run; this file is referenced via `#include` and is never overwritten.
+//
+// Override these values in CI / locally via xcconfig user-defined variables or
+// by exporting matching environment variables before invoking `xcodebuild`.
+
+#include "Common.xcconfig"
+
+// Bundle / signing — Debug only.
+PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_PREFIX).debug
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Development
+PROVISIONING_PROFILE_SPECIFIER = match Development $(BUNDLE_ID_PREFIX).debug
+
+// Faster iterative builds; skip dSYM generation.
+DEBUG_INFORMATION_FORMAT = dwarf
+ONLY_ACTIVE_ARCH = YES
+
+// Allow attaching to a running process from Xcode and `flutter attach`.
+ENABLE_TESTABILITY = YES
+GCC_OPTIMIZATION_LEVEL = 0
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG

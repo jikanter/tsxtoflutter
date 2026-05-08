@@ -1,0 +1,23 @@
+// Release build settings for the Flutter iOS Runner.
+//
+// HAND-MAINTAINED. The codegen pipeline regenerates `Runner.xcodeproj` cleanly
+// every run; this file is referenced via `#include` and is never overwritten.
+
+#include "Common.xcconfig"
+
+PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_PREFIX)
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = match AppStore $(BUNDLE_ID_PREFIX)
+
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+ONLY_ACTIVE_ARCH = NO
+
+GCC_OPTIMIZATION_LEVEL = s
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+ENABLE_BITCODE = NO
+
+// arm64-only — Apple removed bitcode and 32-bit slices long ago.
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64
+VALID_ARCHS = arm64

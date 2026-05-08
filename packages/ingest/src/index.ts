@@ -15,6 +15,17 @@ export type { EscalationPolicyResult, DecideOptions } from './translate/decide.j
 export { lowerWithLlm } from './translate/llm-fallback.js';
 export type { LlmFallbackInput, LlmFallbackOutput } from './translate/llm-fallback.js';
 
+// Phase 4 R4: MDX-frontmatter `permissions:` → Info.plist privacy strings.
+// Standalone emitter — wired in once MDX ingestion lands.
+export {
+  emitInfoPlistPrivacyStrings,
+  PRIVACY_KEY_BY_PERMISSION,
+} from './mdx/privacy.js';
+export type {
+  PermissionKey,
+  PrivacyEmitResult,
+} from './mdx/privacy.js';
+
 export const RULESET_VERSION = '0.1.0';
 
 export interface InputFile {

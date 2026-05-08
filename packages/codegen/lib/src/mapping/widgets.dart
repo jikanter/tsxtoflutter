@@ -3,7 +3,13 @@
 // Closed catalog: each [IrElement.tag] dispatches to a builder; unknown tags
 // throw at decode time. Phase 1 covers `button`, `icon`, `text`, `text-inline`,
 // `stack`, and `fragment`.
+//
+// Phase 4 R8 layer: `aria-*` / `role` props on every IRElement are funneled
+// through [SemanticsMapping] and wrapped around the emitted widget. The
+// wrapper is a no-op when no aria/role props are present, so existing
+// goldens (cta, etc.) emit byte-identical Dart.
 import '../decoder/ir.dart';
+import 'semantics.dart';
 import 'tailwind.dart';
 
 /// Public entry: render an IR node as a Dart widget expression string.
@@ -20,23 +26,25 @@ String emitNode(IrNode node, IrComponent component) {
 }
 
 String emitElement(IrElement el, IrComponent component) {
-  switch (el.tag) {
-    case 'button':
-      return _emitButton(el, component);
-    case 'icon':
-      return _emitIcon(el);
-    case 'text':
-    case 'text-inline':
-      return _emitText(el, component);
-    case 'stack':
-      return _emitStack(el, component);
-    case 'fragment':
-      return emitChildList(el.children, component, gap: el.style.layout?.gap);
-    default:
-      // Closed catalog — but if a less-common tag slips through we render
-      // its children inside a Column to keep emission lossless.
-      return _emitStack(el, component);
-  }
+  final raw = switch (el.tag) {
+    'button' => _emitButton(el, component),
+    'icon' => _emitIcon(el),
+    'text' || 'text-inline' => _emitText(el, component),
+    'stack' => _emitStack(el, component),
+    'fragment' =>
+      emitChildList(el.children, component, gap: el.style.layout?.gap),
+    // Closed catalog — but if a less-common tag slips through we render its
+    // children inside a Column to keep emission lossless.
+    _ => _emitStack(el, component),
+  };
+  return _applySemantics(raw, el);
+}
+
+/// Wrap [child] with `Semantics` / `ExcludeSemantics` when the element carries
+/// `aria-*` or `role` props. No-op otherwise — keeps existing goldens stable.
+String _applySemantics(String child, IrElement el) {
+  final mapping = SemanticsMapping.fromProps(el.props);
+  return mapping.wrap(child);
 }
 
 String _emitButton(IrElement el, IrComponent component) {

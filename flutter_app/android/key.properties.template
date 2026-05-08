@@ -1,0 +1,17 @@
+# Template for Android release-signing credentials.
+#
+# Copy to `flutter_app/android/key.properties` (already gitignored at repo
+# root) for local builds, OR leave absent and set the matching env vars
+# (the build.gradle.kts falls back to env when the file is missing):
+#
+#   ANDROID_KEYSTORE_PATH       — absolute path to the .jks file
+#   ANDROID_KEYSTORE_PASSWORD   — store password
+#   ANDROID_KEY_ALIAS           — key alias inside the store
+#   ANDROID_KEY_PASSWORD        — key password
+#
+# CI must use env vars, not this file. Never commit a populated key.properties.
+
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=__REPLACE_ME__
+keyAlias=upload
+keyPassword=__REPLACE_ME__

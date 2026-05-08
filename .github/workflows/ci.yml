@@ -41,8 +41,8 @@ jobs:
           dart test
           dart format --set-exit-if-changed .
 
-  flutter:
-    name: Flutter app
+  flutter-web:
+    name: Flutter (Web)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,3 +56,126 @@ jobs:
           flutter analyze
           flutter test
           flutter build web --wasm
+
+  flutter-ios:
+    # iOS simulator boot + integration tests. Required gate on every PR.
+    # See research/04-ios-platform.md §7 for runner / cost rationale.
+    name: Flutter (iOS simulator)
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+            flutter_app/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('flutter_app/ios/Podfile.lock') }}
+          restore-keys: ${{ runner.os }}-pods-
+      - name: Boot iPhone 15 simulator
+        uses: futureware-tech/simulator-action@v5
+        with:
+          model: iPhone 15
+          os_version: '>=17.0'
+      - name: Generate iOS platform folder
+        working-directory: flutter_app
+        run: flutter create --platforms=ios --project-name=flutter_app .
+      - name: Restore hand-maintained iOS configs
+        working-directory: flutter_app
+        run: |
+          # `flutter create` may have stomped on hand-maintained xcconfigs;
+          # restore them from git so signing config persists.
+          git checkout HEAD -- ios/Config/ fastlane/ || true
+      - name: pub get + analyze + test
+        working-directory: flutter_app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+      - name: Build iOS simulator binary (no codesign)
+        working-directory: flutter_app
+        run: flutter build ios --simulator --no-codesign
+      - name: Integration tests on simulator
+        working-directory: flutter_app
+        run: |
+          if [ -d integration_test ]; then
+            flutter test integration_test/ -d iPhone\ 15
+          else
+            echo "::notice::integration_test/ not yet present — skipping"
+          fi
+
+  flutter-android:
+    # Android emulator boot + integration tests on API 34 and API 36.
+    # API 36 is the Play Store minimum from 2026; API 34 catches regressions
+    # on the most-deployed device tier.
+    name: Flutter (Android emulator API ${{ matrix.api-level }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [34, 36]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Generate Android platform folder
+        working-directory: flutter_app
+        run: flutter create --platforms=android --project-name=flutter_app .
+      - name: Restore hand-maintained Android configs
+        working-directory: flutter_app
+        run: |
+          # build.gradle.kts, AndroidManifest.xml, proguard-rules.pro, and
+          # key.properties.template are committed and must override any stub
+          # `flutter create` may have written.
+          git checkout HEAD -- android/app/build.gradle.kts \
+                                android/app/src/main/AndroidManifest.xml \
+                                android/app/proguard-rules.pro \
+                                android/key.properties.template \
+                                android/README.md || true
+      - name: pub get + analyze + test
+        working-directory: flutter_app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+      - name: Boot Android emulator and run integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            cd flutter_app
+            if [ -d integration_test ]; then
+              flutter test integration_test/
+            else
+              echo "::notice::integration_test/ not yet present — skipping"
+            fi
+      - name: Verify 16 KB page-size alignment of native libs
+        # Required for Android 15+ on 64-bit devices; misaligned native libs
+        # crash on first launch on Pixel 8a / 9 / 16+.
+        working-directory: flutter_app
+        run: |
+          if [ -f build/app/outputs/bundle/release/app-release.aab ]; then
+            if command -v zipalign >/dev/null; then
+              zipalign -c -P 16 -v 4 build/app/outputs/bundle/release/app-release.aab \
+                || (echo "::error::AAB is not 16 KB page-aligned" && exit 1)
+            fi
+          fi

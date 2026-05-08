@@ -1,0 +1,31 @@
+// Settings common to Debug + Release. Pulled in by both via `#include`.
+//
+// HAND-MAINTAINED. Survives `flutter create` regen.
+
+// === Toolchain pins ===
+// iOS 26 SDK is required for App Store submissions starting 2026-04-28.
+// Deployment target tracks the Flutter SPM floor (iOS 15 since Flutter 3.44).
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+TARGETED_DEVICE_FAMILY = 1,2
+
+// === Identity ===
+// Override per-environment via user-defined env vars or xcconfig overlays.
+BUNDLE_ID_PREFIX = com.example.tsxtoflutter
+DEVELOPMENT_TEAM = $(DEVELOPMENT_TEAM_ID)
+MARKETING_VERSION = $(FLUTTER_BUILD_NAME)
+CURRENT_PROJECT_VERSION = $(FLUTTER_BUILD_NUMBER)
+
+// === Swift / language ===
+SWIFT_VERSION = 5.10
+CLANG_ENABLE_MODULES = YES
+
+// === SPM-first ===
+// CocoaPods is only used for plugins that have not yet shipped SPM support.
+// Firebase, Google services, etc. ship SPM as of 2026.
+ENABLE_USER_SCRIPT_SANDBOXING = YES
+
+// === Privacy / hardening ===
+// Privacy strings (NS*UsageDescription) are generated into Info.plist from
+// MDX frontmatter — see packages/ingest/src/mdx/privacy.ts.
+ENABLE_HARDENED_RUNTIME = YES

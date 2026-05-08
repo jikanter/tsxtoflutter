@@ -1,0 +1,24 @@
+# fastlane match — code signing identity store.
+#
+# HAND-MAINTAINED. Never overwritten by `flutter create` or codegen.
+#
+# Reads from env vars so the same Matchfile works for every developer / CI
+# runner without leaking the cert repo URL into git.
+
+git_url(ENV["MATCH_GIT_URL"]) # e.g. git@github.com:org/ios-certs.git
+
+# `git` storage is the lowest-friction option; switch to `s3` or
+# `google_cloud` if you need multi-region access.
+storage_mode("git")
+
+# Comma-separate when you have multiple bundle IDs (e.g. extension targets).
+app_identifier([
+  "com.example.tsxtoflutter",
+  "com.example.tsxtoflutter.debug",
+])
+
+# Override on the CLI: `bundle exec fastlane match appstore --type appstore`.
+type("development")
+
+# Read-only on CI runners — they should never mutate the cert repo.
+readonly(ENV["CI"] == "true")
