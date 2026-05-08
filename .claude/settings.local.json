@@ -76,7 +76,24 @@
       "Bash(pnpm --filter @tsxtoflutter/preview typecheck)",
       "Bash(pnpm --filter @tsxtoflutter/preview build)",
       "Bash(timeout 3 bun apps/cli/src/index.ts watch packages/tsx-fixtures/fixtures --ir-out /tmp/tsxf-watch-smoke/ir --out /tmp/tsxf-watch-smoke/out --flutter-app /tmp/tsxf-watch-smoke/flutter --cache-dir /tmp/tsxf-watch-smoke/cache)",
-      "Bash(echo \"demo verify=$?\")"
+      "Bash(echo \"demo verify=$?\")",
+      "Read(//Users/admin/.skills/**)",
+      "Bash(find / -path /proc -prune -o -name \"claude-api\" -type d -print)",
+      "Bash(pnpm --filter @tsxtoflutter/llm typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/ir build)",
+      "Bash(pnpm --filter @tsxtoflutter/llm test)",
+      "Bash(pnpm --filter @tsxtoflutter/llm build)",
+      "Bash(pnpm --filter @tsxtoflutter/ingest typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/tracing build)",
+      "Bash(pnpm --filter @tsxtoflutter/tracing test)",
+      "Bash(pnpm --filter @tsxtoflutter/cli typecheck)",
+      "Bash(pnpm --filter @tsxtoflutter/cache --filter @tsxtoflutter/ingest --filter @tsxtoflutter/orchestrator --filter @tsxtoflutter/llm --filter @tsxtoflutter/tracing build)",
+      "Bash(pnpm --filter @tsxtoflutter/cli test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm --filter @tsxtoflutter/ir test)",
+      "Bash(pnpm --filter @tsxtoflutter/llm --filter @tsxtoflutter/tracing --filter @tsxtoflutter/ingest --filter @tsxtoflutter/cli test)",
+      "Bash(pnpm --filter @tsxtoflutter/cli build)",
+      "Bash(pnpm --filter @tsxtoflutter/cli dev -- eval --corpus packages/tsx-fixtures/fixtures --out /tmp/phase3-eval.json --trace-dir /tmp/phase3-traces)"
     ],
     "additionalDirectories": [
       "/Volumes/ExternalData/admin/Developer/Projects/tsxtoflutter/packages/ingest"

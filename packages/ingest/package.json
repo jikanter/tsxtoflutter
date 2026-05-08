@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@tsxtoflutter/ir": "workspace:*",
+    "@tsxtoflutter/llm": "workspace:*",
     "@babel/generator": "^7.26.0",
     "@babel/parser": "^7.26.0",
     "@babel/traverse": "^7.26.0",

@@ -10,6 +10,11 @@ import { IRProgramSchema } from '@tsxtoflutter/ir';
 import { parseTsx } from './parsers/tsx.js';
 import { collectInterfaces, lowerComponent } from './lower/component.js';
 
+export { decide, localComplexity } from './translate/decide.js';
+export type { EscalationPolicyResult, DecideOptions } from './translate/decide.js';
+export { lowerWithLlm } from './translate/llm-fallback.js';
+export type { LlmFallbackInput, LlmFallbackOutput } from './translate/llm-fallback.js';
+
 export const RULESET_VERSION = '0.1.0';
 
 export interface InputFile {

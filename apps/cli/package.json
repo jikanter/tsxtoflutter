@@ -23,8 +23,10 @@
     "@tsxtoflutter/cache": "workspace:*",
     "@tsxtoflutter/ingest": "workspace:*",
     "@tsxtoflutter/ir": "workspace:*",
+    "@tsxtoflutter/llm": "workspace:*",
     "@tsxtoflutter/orchestrator": "workspace:*",
     "@tsxtoflutter/tokens": "workspace:*",
+    "@tsxtoflutter/tracing": "workspace:*",
     "commander": "^12.1.0"
   },
   "devDependencies": {

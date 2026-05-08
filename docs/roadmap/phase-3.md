@@ -17,27 +17,25 @@
 - [ ] First-pass coverage: 12 colors (M3 roles), spacing scale, 4 type tokens — _the emitters are general; the canonical `tokens.json` for the project is still TODO and gets added alongside the LLM fallback work below._
 - [ ] Token changes flow through codegen → Tailwind + `theme.g.dart` regenerate within the Phase 2 budget — _wiring into the watcher pipeline is TODO; the emitters are unit-test green._
 
-### R2 — LLM fallback (`packages/ingest` + new `packages/llm`)
+### R2 — LLM fallback (`packages/ingest` + new `packages/llm`) ✅
 
-- [ ] **Complexity score per IR subtree** = `nodeCount + (hasHooksWithEffects ? 10 : 0) + (hasCustomHook ? 5 : 0)`. Threshold: score > 20 **OR** ≥ 2 deterministic-rule failures on the subtree → escalate.
-- [ ] **Three-tier model routing** wired but Phase 3 ships only the Sonnet path. Opus fallback (after 2 Sonnet failures or for novel patterns) and Haiku classification path are scaffolded but feature-flagged off by default.
-  - Sonnet 4.6 = `claude-sonnet-4-6` (hot path).
-  - Opus 4.7 = `claude-opus-4-7` (hard cases; flag).
-  - Haiku 4.5 = `claude-haiku-4-5-20251001` (classification/renaming; flag).
-- [ ] **Prompt caching mandatory.** System prompt = rules + closed widget catalog + token map (~15–25k tokens). Single cache breakpoint at end of system prompt. Use 5-min TTL by default; 1-hour TTL for nightly batch runs (config flag).
-- [ ] Anthropic SDK usage follows the `claude-api` skill conventions for caching and budget enforcement.
-- [ ] `ANTHROPIC_API_KEY` required only when LLM path is enabled; missing key → clear error, never silent.
-- [ ] **Per-conversion budget** — `maxInputTokens`, `maxOutputTokens`, `maxToolTurns`, `maxCostUsd` (default `0.50`). Fail-closed when exceeded; mark conversion `failed`; surface partial trace.
+- [x] **Complexity score per IR subtree** = `nodeCount + (hasHooksWithEffects ? 10 : 0) + (hasCustomHook ? 5 : 0)`, plus +5 per `unsupported` marker. Threshold: score > 20 **OR** ≥ 2 deterministic-rule failures → escalate. Lives in `packages/llm/src/complexity.ts`; mirrored as `localComplexity` in `packages/ingest/src/translate/decide.ts` so the policy is testable without the full LLM dep graph.
+- [x] **Three-tier model routing** scaffolded; Sonnet is the only tier on by default. Opus + Haiku are reachable via the `tier` arg of `lowerWithLlm()` but the production hot path stays Sonnet-only this phase. Model ids exposed as `MODELS.{sonnet,opus,haiku}`.
+- [x] **Prompt caching mandatory.** `buildSystemPrompt()` emits exactly one ephemeral `cache_control` breakpoint on the LAST block (rules + tier framing + tool protocol + closed catalog + token map). 5-min TTL by default; `ttl: '1h'` flag for batch runs. `assertSingleCacheBreakpoint()` is asserted by tests so a refactor can't silently move it.
+- [x] Anthropic Messages API wired via a thin fetch-based `AnthropicLlmClient`; `LlmClient` is the seam, so tests inject a `FakeClient` and never spend tokens.
+- [x] `ANTHROPIC_API_KEY` required only when LLM path is enabled; `clientFromEnv()` throws a clear error when missing — never silent.
+- [x] **Per-conversion budget** — `BudgetTracker` with `maxInputTokens` / `maxOutputTokens` / `maxToolTurns` / `maxCostUsd` (default `0.50`). Throws `BudgetExceededError` the moment any cap is breached; `cap` field on the error tells the caller which limit blew. Pricing table in `packages/llm/src/pricing.ts`.
 
-### R3 — Tool-use self-correction loop
+### R3 — Tool-use self-correction loop ✅
 
-- [ ] Tools exposed to the model:
-  - `run_flutter_analyze(dart_source: string) -> { errors, warnings }` — runs `flutter analyze` in a sandboxed temp project. **The killer tool**: model sees its own lint errors and fixes them.
-  - `render_widget_screenshot(dart_source: string) -> { png_base64 }` — boots a headless Flutter Web instance, returns a screenshot.
-  - `get_design_token(name: string) -> { value, type }` — reads from `tokens.json`.
-  - `lookup_widget_catalog(query: string) -> { widgets[] }` — searches the closed widget catalog.
-- [ ] Loop bound: `MAX_TURNS = 8`.
-- [ ] Tool calls subtract from the per-conversion budget.
+- [x] Tools exposed to the model:
+  - `run_flutter_analyze` — scaffolds a temp project and runs `flutter analyze --no-pub`; analyzer output parsed into `{errors, warnings, infos}` via the regex in `parseAnalyzerOutput`. Sandbox auto-cleans on failure.
+  - `render_widget_screenshot` — seam shipped; throws a clear "renderer not configured" error until Phase 4 wires the headless Flutter Web instance. Tests inject a fake renderer.
+  - `get_design_token` — reads `tokens.json` (or an injected resolved tree), returns `{value, type}`. Errors on missing path or group-not-leaf.
+  - `lookup_widget_catalog` — ranked search over the closed catalog; capped at 5 hits, name matches outrank summary matches.
+- [x] Loop bound: `DEFAULT_MAX_TURNS = 8` in `runToolLoop`. Hitting it returns `stopReason: 'max_tokens'` so the caller can mark the conversion `failed`.
+- [x] Each tool round calls `BudgetTracker.recordToolTurn()`; budget overrun fail-closes the loop before the next turn fires.
+- [x] Tool errors reach the model as `tool_result` blocks with `is_error: true` — the loop never crashes on a thrown tool handler.
 
 ### R4 — Golden corpus + automated quality gate
 

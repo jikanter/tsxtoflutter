@@ -10,7 +10,9 @@
     { "path": "../../packages/cache" },
     { "path": "../../packages/ingest" },
     { "path": "../../packages/ir" },
+    { "path": "../../packages/llm" },
     { "path": "../../packages/orchestrator" },
-    { "path": "../../packages/tokens" }
+    { "path": "../../packages/tokens" },
+    { "path": "../../packages/tracing" }
   ]
 }
