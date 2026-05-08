@@ -13,7 +13,18 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "lucide-react": { "optional": true },
+    "react": { "optional": true }
+  },
   "devDependencies": {
+    "@types/react": "^19.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
     "typescript": "^5.7.0"
   }
 }

@@ -36,12 +36,14 @@ export async function startWatch(
     outDir: path.resolve(options.outDir),
     flutterAppDir: path.resolve(options.flutterAppDir),
     cwd,
-    flutterVmServiceUri: options.vmServiceUri,
     vmServiceCachePath,
     parseCacheStore: async (file, ir) => {
       const key = parseKey({ source: file.contents, parserVersion: PARSER_VERSION });
       await cache.put('parse', key, ir);
     },
+    ...(options.vmServiceUri !== undefined
+      ? { flutterVmServiceUri: options.vmServiceUri }
+      : {}),
   });
 
   await orchestrator.start();
