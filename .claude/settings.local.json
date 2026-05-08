@@ -9,7 +9,9 @@
       "PowerShell(pnpm *)",
       "PowerShell(corepack *)",
       "PowerShell(mise *)",
-      "PowerShell(Get-Command *)"
+      "PowerShell(Get-Command *)",
+      "Read(//Volumes/ExternalData/admin/Developer/Projects/flutter/**)",
+      "Bash(flutter upgrade *)"
     ]
   }
 }
