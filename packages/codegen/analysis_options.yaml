@@ -1,6 +1,9 @@
 include: package:lints/recommended.yaml
 
 analyzer:
+  exclude:
+    # Goldens import flutter — analyzed by `flutter analyze` from flutter_app/.
+    - test/golden/**
   language:
     strict-casts: true
     strict-inference: true

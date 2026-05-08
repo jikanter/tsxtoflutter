@@ -1,0 +1,117 @@
+{
+  "version": "0.1",
+  "inputHash": "3e42effd3eb4c80bc7018af763f8dc1da3c65925288a86e87155609528502c55",
+  "rulesetVersion": "0.1.0",
+  "components": [
+    {
+      "kind": "component",
+      "id": "7f9edd4bc2ab9b5872455edfc1affcbb05ce4279701d48a7815422a2e84915f3",
+      "name": "Cta",
+      "source": {
+        "file": "packages/tsx-fixtures/fixtures/Button.tsx",
+        "line": 9,
+        "col": 7
+      },
+      "params": [
+        {
+          "name": "label",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "onGo",
+          "type": {
+            "kind": "callback"
+          }
+        }
+      ],
+      "body": {
+        "kind": "element",
+        "tag": "button",
+        "source": {
+          "name": "Button",
+          "loc": {
+            "file": "packages/tsx-fixtures/fixtures/Button.tsx",
+            "line": 11,
+            "col": 4
+          }
+        },
+        "style": {
+          "layout": {
+            "gap": {
+              "kind": "px",
+              "value": 8
+            }
+          }
+        },
+        "props": {
+          "variant": {
+            "kind": "literal",
+            "value": "default"
+          },
+          "size": {
+            "kind": "literal",
+            "value": "lg"
+          }
+        },
+        "events": [
+          {
+            "name": "tap",
+            "handler": {
+              "kind": "paramRef",
+              "name": "onGo"
+            }
+          }
+        ],
+        "children": [
+          {
+            "kind": "expression",
+            "expr": {
+              "kind": "paramRef",
+              "name": "label"
+            },
+            "loc": {
+              "file": "packages/tsx-fixtures/fixtures/Button.tsx",
+              "line": 12,
+              "col": 6
+            }
+          },
+          {
+            "kind": "element",
+            "tag": "icon",
+            "source": {
+              "name": "ChevronRight",
+              "loc": {
+                "file": "packages/tsx-fixtures/fixtures/Button.tsx",
+                "line": 13,
+                "col": 6
+              }
+            },
+            "style": {
+              "box": {
+                "height": {
+                  "kind": "px",
+                  "value": 16
+                },
+                "width": {
+                  "kind": "px",
+                  "value": 16
+                }
+              }
+            },
+            "props": {
+              "name": {
+                "kind": "literal",
+                "value": "chevron_right"
+              }
+            },
+            "events": [],
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": []
+}

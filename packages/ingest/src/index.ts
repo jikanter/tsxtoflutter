@@ -1,5 +1,14 @@
 import { createHash } from 'node:crypto';
-import type { IRProgram, IRComponent, IRDiagnostic } from '@tsxtoflutter/ir';
+import * as t from '@babel/types';
+import type {
+  IRComponent,
+  IRDiagnostic,
+  IRProgram,
+} from '@tsxtoflutter/ir';
+import { IRProgramSchema } from '@tsxtoflutter/ir';
+
+import { parseTsx } from './parsers/tsx.js';
+import { collectInterfaces, lowerComponent } from './lower/component.js';
 
 export const RULESET_VERSION = '0.1.0';
 
@@ -11,40 +20,125 @@ export interface InputFile {
 }
 
 export interface IngestOptions {
-  /** Resolved Tailwind config (theme, screens, plugins). */
   tailwindConfig?: unknown;
-  /** Hand-curated map: shadcn component name → semantic tag + variant tokens. */
   shadcnMap?: Record<string, unknown>;
-  /** Path to lucide-react → flutter icon name table. */
   lucideMap?: Record<string, string>;
+  /** When true, validate the resulting IR against the zod schema. Default true. */
+  validate?: boolean;
 }
 
-/**
- * Parse a set of TSX/MDX inputs and lower them to the shared IR.
- *
- * Implementation lives in `parsers/`, `visitors/`, `styles/`, `components/`.
- * See `research/01-react-ingestion.md` for the algorithm.
- */
 export async function ingest(
   inputs: InputFile[],
-  _options: IngestOptions = {},
+  options: IngestOptions = {},
 ): Promise<IRProgram> {
   const components: IRComponent[] = [];
   const diagnostics: IRDiagnostic[] = [];
 
-  for (const _input of inputs) {
-    // TODO: dispatch to parsers/tsx.ts or parsers/mdx.ts based on `kind`.
-    // TODO: walk JSX → IR via visitors/.
-    // TODO: collapse Tailwind/inline/CSS-modules → NormalizedStyle.
+  for (const input of inputs) {
+    const kind = input.kind ?? detectKind(input.path);
+    if (kind === 'mdx') {
+      diagnostics.push({
+        severity: 'warn',
+        code: 'mdx-not-supported',
+        message: 'MDX ingestion lands in a later phase; skipping.',
+      });
+      continue;
+    }
+    const parsed = parseTsx(input.contents, input.path);
+    const interfaces = collectInterfaces(parsed.ast);
+    const contentHash = sha256(input.contents);
+
+    for (const stmt of parsed.ast.program.body) {
+      const decl = unwrapExport(stmt);
+      if (!decl) continue;
+
+      if (t.isFunctionDeclaration(decl) && decl.id) {
+        const name = decl.id.name;
+        const id = stableId(input.path, name, contentHash);
+        const lowered = lowerComponent(decl, name, input.path, interfaces, id);
+        if (lowered) {
+          components.push(lowered.component);
+          diagnostics.push(...lowered.diagnostics);
+        }
+        continue;
+      }
+
+      if (t.isVariableDeclaration(decl)) {
+        for (const v of decl.declarations) {
+          if (
+            t.isIdentifier(v.id) &&
+            v.init &&
+            (t.isArrowFunctionExpression(v.init) ||
+              t.isFunctionExpression(v.init))
+          ) {
+            const name = v.id.name;
+            const id = stableId(input.path, name, contentHash);
+            const lowered = lowerComponent(
+              v.init,
+              name,
+              input.path,
+              interfaces,
+              id,
+            );
+            if (lowered) {
+              components.push(lowered.component);
+              diagnostics.push(...lowered.diagnostics);
+            }
+          }
+        }
+      }
+    }
   }
 
-  return {
+  const program: IRProgram = {
     version: '0.1',
     inputHash: hashInputs(inputs),
     rulesetVersion: RULESET_VERSION,
     components,
     diagnostics,
   };
+
+  if (options.validate !== false) {
+    const result = IRProgramSchema.safeParse(program);
+    if (!result.success) {
+      throw new Error(
+        `IR failed schema validation: ${result.error.issues
+          .slice(0, 5)
+          .map((i) => `${i.path.join('.')}: ${i.message}`)
+          .join('; ')}`,
+      );
+    }
+  }
+
+  return program;
+}
+
+function unwrapExport(
+  stmt: t.Statement,
+): t.FunctionDeclaration | t.VariableDeclaration | undefined {
+  if (t.isExportNamedDeclaration(stmt) && stmt.declaration) {
+    if (t.isFunctionDeclaration(stmt.declaration)) return stmt.declaration;
+    if (t.isVariableDeclaration(stmt.declaration)) return stmt.declaration;
+  }
+  if (t.isFunctionDeclaration(stmt)) return stmt;
+  if (t.isVariableDeclaration(stmt)) return stmt;
+  return undefined;
+}
+
+function detectKind(path: string): 'tsx' | 'mdx' {
+  return path.toLowerCase().endsWith('.mdx') ? 'mdx' : 'tsx';
+}
+
+function sha256(s: string): string {
+  return createHash('sha256').update(s).digest('hex');
+}
+
+export function stableId(
+  path: string,
+  exportName: string,
+  contentHash: string,
+): string {
+  return sha256(path + exportName + contentHash);
 }
 
 function hashInputs(inputs: InputFile[]): string {
@@ -57,3 +151,4 @@ function hashInputs(inputs: InputFile[]): string {
   }
   return h.digest('hex');
 }
+

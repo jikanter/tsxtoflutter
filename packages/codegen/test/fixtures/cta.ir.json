@@ -1,0 +1,117 @@
+{
+  "version": "0.1",
+  "inputHash": "14e8ff5c72dea1b1351ccd99b6328a72aa409944e0d804c707b78d29b54b5fb3",
+  "rulesetVersion": "0.1.0",
+  "components": [
+    {
+      "kind": "component",
+      "id": "275983f29e5d69cbc29e81afd44bfbb65e19277052001df87aa7c84449a1e0c9",
+      "name": "Cta",
+      "source": {
+        "file": "Button.tsx",
+        "line": 9,
+        "col": 7
+      },
+      "params": [
+        {
+          "name": "label",
+          "type": {
+            "kind": "string"
+          }
+        },
+        {
+          "name": "onGo",
+          "type": {
+            "kind": "callback"
+          }
+        }
+      ],
+      "body": {
+        "kind": "element",
+        "tag": "button",
+        "source": {
+          "name": "Button",
+          "loc": {
+            "file": "Button.tsx",
+            "line": 11,
+            "col": 4
+          }
+        },
+        "style": {
+          "layout": {
+            "gap": {
+              "kind": "px",
+              "value": 8
+            }
+          }
+        },
+        "props": {
+          "variant": {
+            "kind": "literal",
+            "value": "default"
+          },
+          "size": {
+            "kind": "literal",
+            "value": "lg"
+          }
+        },
+        "events": [
+          {
+            "name": "tap",
+            "handler": {
+              "kind": "paramRef",
+              "name": "onGo"
+            }
+          }
+        ],
+        "children": [
+          {
+            "kind": "expression",
+            "expr": {
+              "kind": "paramRef",
+              "name": "label"
+            },
+            "loc": {
+              "file": "Button.tsx",
+              "line": 12,
+              "col": 6
+            }
+          },
+          {
+            "kind": "element",
+            "tag": "icon",
+            "source": {
+              "name": "ChevronRight",
+              "loc": {
+                "file": "Button.tsx",
+                "line": 13,
+                "col": 6
+              }
+            },
+            "style": {
+              "box": {
+                "height": {
+                  "kind": "px",
+                  "value": 16
+                },
+                "width": {
+                  "kind": "px",
+                  "value": 16
+                }
+              }
+            },
+            "props": {
+              "name": {
+                "kind": "literal",
+                "value": "chevron_right"
+              }
+            },
+            "events": [],
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": []
+}

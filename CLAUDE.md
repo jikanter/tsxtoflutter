@@ -13,7 +13,8 @@ Read these files for background before starting work:
 ### Hard (Non-negotiable)
 - **IMPORTANT:** Output components must compile for iOS, Android, and Web.
 - **IMPORTANT:** Platform-specific extensions must be replicated across iOS, Android, and Web.
-- **IMPORTANT:** Validate all phases with the `showboat` tool (read `showboat --help` to learn more)
+- **IMPORTANT:** Validate all phases with the `showboat` tool (read `showboat --help` to learn more).
+- **IMPORTANT:** All showboat demos must be stored in docs/demos and all demo docs MUST be evergreen (no timestamps or randomly generated numbers in output).
 - **IMPORTANT:** Use the test-driven development skill for any development work.
 
 ### Soft (Preferred)

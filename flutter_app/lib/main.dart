@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tsxtoflutter_runtime/tsxtoflutter_runtime.dart';
 
+import 'components/cta.dart';
+
 void main() {
   runApp(const ProviderScope(child: App()));
 }
@@ -87,6 +89,7 @@ class _Placeholder extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+              Cta(label: 'Get started', onGo: () {}),
             ],
           ),
         ),

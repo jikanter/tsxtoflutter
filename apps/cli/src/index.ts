@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { Command } from 'commander';
-import { ingest } from '@tsxtoflutter/ingest';
+
+import { convert } from './commands/convert.js';
 import { runDoctor } from './commands/doctor.js';
 import { runCache } from './commands/cache.js';
 
@@ -15,26 +16,29 @@ program
   .command('init')
   .description('Scaffold the output Flutter project.')
   .action(() => {
-    // TODO: copy the template skeleton into ./flutter_app and run `flutter create .`.
+    // TODO(phase 4): copy template + run `flutter create .` for each platform.
     console.log('TODO: tsxf init');
   });
 
 program
   .command('convert <input...>')
   .description('Convert TSX/MDX inputs to Dart (one-shot).')
-  .option('--out <dir>', 'IR output directory', '.tsxf-cache/ir')
-  .option('--no-llm', 'deterministic codemods only (CI sanity)')
-  .action(async (_inputs: string[], _opts) => {
-    // TODO: read inputs, call `ingest`, write IR JSON, spawn `dart run tsxtoflutter convert`.
-    const program = await ingest([]);
-    console.log(`Generated IR for ${program.components.length} component(s).`);
+  .option(
+    '--out <dir>',
+    'Output directory for generated Dart files',
+    'flutter_app/lib/components',
+  )
+  .option('--no-llm', 'Deterministic codemods only (CI sanity).')
+  .action(async (inputs: string[], opts: { out: string; llm?: boolean }) => {
+    const code = await convert(inputs, { out: opts.out, llm: opts.llm });
+    if (code !== 0) process.exit(code);
   });
 
 program
   .command('watch [dir]')
   .description('Watch inputs and hot-reload preview.')
   .action((_dir?: string) => {
-    // TODO: orchestrator.start()
+    // TODO(phase 2): orchestrator.start()
     console.log('TODO: tsxf watch');
   });
 

@@ -110,6 +110,9 @@ importers:
 
   packages/ingest:
     dependencies:
+      '@babel/generator':
+        specifier: ^7.26.0
+        version: 7.29.1
       '@babel/parser':
         specifier: ^7.26.0
         version: 7.29.3
@@ -144,6 +147,9 @@ importers:
         specifier: ^5.0.0
         version: 5.1.0
     devDependencies:
+      '@types/babel__generator':
+        specifier: ^7.27.0
+        version: 7.27.0
       '@types/babel__traverse':
         specifier: ^7.20.0
         version: 7.28.0
