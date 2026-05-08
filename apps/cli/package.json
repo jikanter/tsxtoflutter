@@ -1,0 +1,33 @@
+{
+  "name": "@tsxtoflutter/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "tsxf CLI: ingest, convert, watch, preview, eval, doctor, trace.",
+  "type": "module",
+  "bin": {
+    "tsxf": "bin/tsxf.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "dev": "bun run src/index.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tsxtoflutter/ingest": "workspace:*",
+    "@tsxtoflutter/ir": "workspace:*",
+    "@tsxtoflutter/orchestrator": "workspace:*",
+    "@tsxtoflutter/tokens": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

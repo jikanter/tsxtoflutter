@@ -1,0 +1,36 @@
+{
+  "name": "@tsxtoflutter/ingest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TSX + MDX parser; lowers Claude Design output to the shared IR.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tsxtoflutter/ir": "workspace:*",
+    "@babel/parser": "^7.26.0",
+    "@babel/traverse": "^7.26.0",
+    "@babel/types": "^7.26.0",
+    "@mdx-js/mdx": "^3.1.0",
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-mdx": "^3.1.0",
+    "remark-rehype": "^11.1.0",
+    "unist-util-visit": "^5.0.0",
+    "tailwindcss": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.20.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

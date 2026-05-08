@@ -1,0 +1,27 @@
+{
+  "name": "@tsxtoflutter/preview",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Vite app: side-by-side TSX (live React) vs Flutter Web preview.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tsxtoflutter/tsx-fixtures": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.0",
+    "vite": "^8.0.0"
+  }
+}

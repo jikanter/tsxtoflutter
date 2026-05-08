@@ -1,0 +1,19 @@
+{
+  "name": "@tsxtoflutter/tsx-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Canonical TSX/MDX corpus the codegen must round-trip pixel-perfect.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

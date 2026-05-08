@@ -1,0 +1,24 @@
+{
+  "name": "tsxtoflutter",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Transform TSX/MDX from Claude Design into runnable Flutter apps.",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}

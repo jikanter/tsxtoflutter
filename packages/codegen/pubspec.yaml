@@ -1,0 +1,20 @@
+name: tsxtoflutter_codegen
+description: IR JSON → Dart source via code_builder + dart_style. Pure-Dart CLI.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  code_builder: ^4.10.0
+  dart_style: ^2.3.7
+  watcher: ^1.1.0
+  args: ^2.5.0
+  path: ^1.9.0
+  collection: ^1.18.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

@@ -1,0 +1,25 @@
+{
+  "name": "@tsxtoflutter/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DTCG (W3C design tokens v1) loader; emits Tailwind config + Dart theme.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "style-dictionary": "^4.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

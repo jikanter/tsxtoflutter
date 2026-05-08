@@ -1,0 +1,45 @@
+# Node / pnpm
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.metadata
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+android/.gradle/
+android/local.properties
+android/key.properties
+android/**/keystore.jks
+
+# tsxtoflutter pipeline
+.tsxf-cache/
+.tsxf-trace/
+
+# IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs / env
+*.log
+.env
+.env.local
+.env.*.local

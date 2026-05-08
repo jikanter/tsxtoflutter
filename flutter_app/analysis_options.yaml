@@ -1,0 +1,22 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    # Generated widget tree files; codegen-owned.
+    - 'lib/components/*.g.dart'
+    - 'lib/theme.g.dart'
+  errors:
+    # Riverpod generator emits unused_element on private-class-name shorthands.
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    prefer_final_locals: true
+    require_trailing_commas: true
+    avoid_print: true
