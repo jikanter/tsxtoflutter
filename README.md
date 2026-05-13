@@ -86,6 +86,25 @@ pnpm --filter @tsxtoflutter/preview dev   # Vite on http://localhost:5173
 
 `tsxf` is the TS-side entry point. Run it via `pnpm --filter @tsxtoflutter/cli dev -- <subcommand>` during development, or after `pnpm build` via `pnpm --filter @tsxtoflutter/cli exec tsxf <subcommand>`.
 
+### Running in development without installing
+
+The two-step dance (clone the repo, then run against TSX/JSX you already have somewhere else) is the common case before `tsxf` is installed globally. From the repo root:
+
+```sh
+bun run apps/cli/src/index.ts convert \
+  /abs/path/to/your/Component.tsx \
+  --out /abs/path/to/your/output_dir \
+  --no-llm
+```
+
+- `--out` can point anywhere; the Dart codegen runs inside this repo's `flutter_app/` (which already declares `tsxtoflutter_codegen` as a path dep), but its output files land at `--out`.
+- Drop `--no-llm` once `ANTHROPIC_API_KEY` is set and you want the LLM fallback path.
+- Swap `convert` for `watch <dir>` to keep regenerating on save.
+
+Why bypass `pnpm --filter … dev`? The `dev` script is `bun run src/index.ts`, and pnpm spawns it with whatever PATH it inherited. If your shell exports `bun` via a profile fragment pnpm doesn't see (common with `~/.bun/bin` and node version managers), pnpm fails with a bare `spawn ENOENT`. Calling `bun` directly removes the layer. Same gotcha applies to `dart`: `convert` shells out to `dart run …`, so `which dart` must work in the same shell that launched bun. If it doesn't, prepend `PATH=/path/to/flutter/bin:$PATH` to the command.
+
+`.jsx` inputs are accepted — ingest treats any non-`.mdx` extension as TSX (`packages/ingest/src/index.ts:145`) and Babel's TSX parser handles plain JSX. Rename to `.tsx` only if you hit a parse error on syntax the TS parser reads ambiguously (e.g., `<T>(x) => …` generic arrows).
+
 ### Installing `tsxf` globally
 
 `bun link` does not currently materialize workspace packages into Bun's global `node_modules`, so the symlink it creates dangles. Use one of the following instead.

@@ -45,3 +45,6 @@ Thumbs.db
 .env.*.local
 
 **/worktrees/*
+.tsxtoflutter/
+**/.tsxtoflutter/*
+.tsxtoflutter/ir/**
