@@ -86,6 +86,31 @@ pnpm --filter @tsxtoflutter/preview dev   # Vite on http://localhost:5173
 
 `tsxf` is the TS-side entry point. Run it via `pnpm --filter @tsxtoflutter/cli dev -- <subcommand>` during development, or after `pnpm build` via `pnpm --filter @tsxtoflutter/cli exec tsxf <subcommand>`.
 
+### Installing `tsxf` globally
+
+`bun link` does not currently materialize workspace packages into Bun's global `node_modules`, so the symlink it creates dangles. Use one of the following instead.
+
+**Dev shim (live edits, no rebuild).** Recommended while iterating on the CLI:
+
+```sh
+cat > ~/.local/bin/tsxf <<EOF
+#!/usr/bin/env bash
+exec bun run $(pwd)/apps/cli/src/index.ts "\$@"
+EOF
+chmod +x ~/.local/bin/tsxf
+```
+
+Ensure `~/.local/bin` is on `PATH`. Edits to `apps/cli/src/**` take effect immediately on the next invocation.
+
+**Standalone binary (`bun build --compile`).** Recommended once the CLI is stable — produces a single self-contained executable, no `bun`/`node_modules` needed at runtime:
+
+```sh
+cd apps/cli
+bun build ./src/index.ts --compile --outfile ~/.local/bin/tsxf
+```
+
+Rebuild after any source change.
+
 | Command                         | What it does |
 |---------------------------------|--------------|
 | `tsxf init`                     | Scaffold the output Flutter project (one-time per project). |
