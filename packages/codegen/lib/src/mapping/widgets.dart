@@ -19,10 +19,19 @@ String emitNode(IrNode node, IrComponent component) {
     IrText() => 'Text(${_dartString(node.value)})',
     IrExpression() => emitExpressionAsWidget(node.expr),
     IrFragment() => emitChildList(node.children, component, gap: null),
-    IrConditional() => 'const SizedBox.shrink()', // TODO(phase 2)
+    IrConditional() => _emitConditional(node, component),
     IrList() => 'const SizedBox.shrink()', // TODO(phase 2)
     IrSlot() => emitChildList(node.children, component, gap: null),
   };
+}
+
+String _emitConditional(IrConditional node, IrComponent component) {
+  final test = _propValueAsString(node.test);
+  final consequent = emitNode(node.consequent, component);
+  final alternate = node.alternate != null
+      ? emitNode(node.alternate!, component)
+      : 'const SizedBox.shrink()';
+  return '($test ? $consequent : $alternate)';
 }
 
 String emitElement(IrElement el, IrComponent component) {
@@ -55,6 +64,11 @@ String _emitButton(IrElement el, IrComponent component) {
 }
 
 String _emitIcon(IrElement el) {
+  final scaffold = el.props['scaffold'];
+  if (scaffold is IrLiteral && scaffold.value == 'svg') {
+    return _emitSvgScaffold(el);
+  }
+
   final iconProp = el.props['name'];
   final iconName = iconProp is IrLiteral && iconProp.value is String
       ? iconProp.value as String
@@ -64,6 +78,25 @@ String _emitIcon(IrElement el) {
   final args = <String>['Icons.$iconName'];
   if (size != null) args.add('size: ${_num(size)}');
   return 'const Icon(${args.join(", ")})';
+}
+
+String _emitSvgScaffold(IrElement el) {
+  String dim(String key) {
+    final v = el.props[key];
+    if (v is IrLiteral && v.value is num) return _num(v.value as num);
+    return '24';
+  }
+
+  final width = dim('width');
+  final height = dim('height');
+  return '/* TODO(tsxf): replace this SVG scaffold with a Flutter best-practice equivalent.\n'
+      ' *   1) UI glyph?  Use Icons.<name> or CupertinoIcons.<name> (free, themed, scales).\n'
+      ' *   2) Artwork?   Precompile with vector_graphics_compiler → VectorGraphic widget\n'
+      ' *                 (https://pub.dev/packages/vector_graphics_compiler).\n'
+      ' *   3) Last resort: flutter_svg SvgPicture.asset / SvgPicture.string\n'
+      ' *                 (runtime parse; OK for prototypes).\n'
+      ' * The original <svg> markup was dropped during scaffold generation. */\n'
+      'SizedBox(width: $width, height: $height, child: const Placeholder())';
 }
 
 String _emitText(IrElement el, IrComponent component) {

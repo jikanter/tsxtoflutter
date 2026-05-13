@@ -20,13 +20,7 @@ const EXPECTED_DIR = path.join(HERE, 'expected');
 const CLI_ENTRY = path.join(REPO_ROOT, 'apps', 'cli', 'src', 'index.ts');
 const UPDATE = process.env.UPDATE_GOLDENS === '1';
 
-// PageHeader currently fails codegen (conditional JSX in expression position
-// emits raw TSX into the .g.dart file, which is not parseable Dart). Excluded
-// from byte-for-byte goldens until the codegen is fixed; remove from the skip
-// set when that work lands.
-const SKIPPED: ReadonlyMap<string, string> = new Map([
-  ['PageHeader.tsx', 'codegen emits raw TSX for ternary JSX children'],
-]);
+const SKIPPED: ReadonlyMap<string, string> = new Map();
 
 async function listFixtures(): Promise<string[]> {
   const entries = await fs.readdir(FIXTURES_DIR);

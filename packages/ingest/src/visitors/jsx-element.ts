@@ -34,6 +34,23 @@ export function jsxElementToIR(el: t.JSXElement, filename: string): IRElement {
     };
   }
 
+  if (name === 'svg') {
+    const lifted = liftAttrs(opening.attributes, filename);
+    const props: Record<string, IRPropValue> = {
+      ...lifted.props,
+      scaffold: { kind: 'literal', value: 'svg' },
+    };
+    return {
+      kind: 'element',
+      tag: 'icon',
+      source: { name, loc },
+      style: lifted.style,
+      props,
+      events: lifted.events,
+      children: [],
+    };
+  }
+
   const shadcn = lookupShadcn(name);
   const tag: SemanticTag = shadcn?.tag ?? mapHtmlTag(name);
   const lifted = liftAttrs(opening.attributes, filename);
@@ -72,6 +89,44 @@ function childToIR(
   }
   if (t.isJSXExpressionContainer(c)) {
     if (t.isJSXEmptyExpression(c.expression)) return undefined;
+    const e = c.expression;
+
+    if (t.isLogicalExpression(e) && e.operator === '&&') {
+      const rhs = jsxExprToIR(e.right, filename);
+      if (rhs) {
+        return {
+          kind: 'conditional',
+          test: exprToProp(e.left, filename),
+          consequent: rhs,
+        };
+      }
+    }
+
+    if (t.isConditionalExpression(e)) {
+      const consequent = jsxExprToIR(e.consequent, filename);
+      const alternate = jsxExprToIR(e.alternate, filename);
+      if (consequent && alternate) {
+        return {
+          kind: 'conditional',
+          test: exprToProp(e.test, filename),
+          consequent,
+          alternate,
+        };
+      }
+      // `cond ? <X/> : null|undefined` is the same shape as `cond && <X/>`.
+      if (
+        consequent &&
+        (t.isNullLiteral(e.alternate) ||
+          (t.isIdentifier(e.alternate) && e.alternate.name === 'undefined'))
+      ) {
+        return {
+          kind: 'conditional',
+          test: exprToProp(e.test, filename),
+          consequent,
+        };
+      }
+    }
+
     const loc = locOf(c, filename);
     const expr = exprToProp(c.expression, filename);
     return loc ? { kind: 'expression', expr, loc } : { kind: 'expression', expr };
@@ -79,6 +134,22 @@ function childToIR(
   if (t.isJSXFragment(c)) {
     const children: IRNode[] = [];
     for (const cc of c.children) {
+      const n = childToIR(cc, filename);
+      if (n) children.push(n);
+    }
+    return { kind: 'fragment', children };
+  }
+  return undefined;
+}
+
+function jsxExprToIR(
+  e: t.Expression,
+  filename: string,
+): IRNode | undefined {
+  if (t.isJSXElement(e)) return jsxElementToIR(e, filename);
+  if (t.isJSXFragment(e)) {
+    const children: IRNode[] = [];
+    for (const cc of e.children) {
       const n = childToIR(cc, filename);
       if (n) children.push(n);
     }
